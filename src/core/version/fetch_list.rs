@@ -6,10 +6,10 @@ pub async fn fetch_list() -> Vec<Value> {
     let response_str = musutils::http::get_json_str(url.to_string()).await;
 
     let response: Value = serde_json::from_str(&response_str)
-        .expect("Failed to parse manifest XML/JSON");
+        .expect(&format!("{}: Failed to parse manifest XML/JSON",musutils::types::Status::Err.as_colored_str()));
 
     response["versions"]
         .as_array()
-        .expect("Failed to find 'versions' array in manifest")
+        .expect(&format!("{}: Failed to find 'versions' array in manifest", musutils::types::Status::Err.as_colored_str()))
         .clone()
 }
