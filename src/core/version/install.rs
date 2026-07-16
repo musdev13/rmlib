@@ -47,6 +47,51 @@ pub async fn install(version_id: String, versions_path_option: Option<PathBuf>, 
         );
     }
 
-}
+    print!("{}: creating directories... ",musutils::types::Status::Task.as_colored_str());
+    musutils::fs::new_dir(versions_path.clone());
+    musutils::fs::new_dir(libs_path.clone());
+    musutils::fs::new_dir(assets_path.clone());
+    let version_path = versions_path.clone().join(version_id.clone());
+    musutils::fs::new_dir(version_path.clone());
+    println!("{}",musutils::types::Status::Ok.as_colored_str());
+    
+    println!("{}", line.clone());
+    print!("{}: writing `{}.json`... ", musutils::types::Status::Task.as_colored_str(), version_id.clone());
+    musutils::fs::write(version_path.clone().join(format!("{}{}", version_id.clone(), ".json")), version_json_str.clone()).expect(&format!("{}: can't write {}.json", musutils::types::Status::Err.as_colored_str(),version_id.clone()));
+    println!("{}", musutils::types::Status::Ok.as_colored_str());
+    
+    
 
+    println!("{}", line.clone());
+    println!("{}: parsing and downloading client jar...", musutils::types::Status::Task.as_colored_str());
+    
+    let version_json: serde_json::Value = serde_json::from_str(&version_json_str)
+    .expect(&format!("{}: can't parse client jar url", musutils::types::Status::Err.as_colored_str()));
+
+    let downloads = version_json.get("downloads")
+        .expect(&format!("{}: 'downloads' field is missing", musutils::types::Status::Err.as_colored_str()));
+
+    let client = downloads.get("client")
+        .expect(&format!("{}: 'client' field is missing in downloads", musutils::types::Status::Err.as_colored_str()));
+
+    let client_sha1 = client.get("sha1")
+        .and_then(|v| v.as_str())
+        .expect(&format!("{}: 'sha1' field is missing or not a string", musutils::types::Status::Err.as_colored_str()))
+        .to_string();
+
+    let client_url = client.get("url")
+        .and_then(|v| v.as_str())
+        .expect(&format!("{}: 'url' field is missing or not a string", musutils::types::Status::Err.as_colored_str()))
+        .to_string();
+
+    let jar_path = version_path.clone().join(format!("{}.jar", version_id.clone()));
+
+    musutils::http::download_to_sha1(client_url, jar_path, client_sha1).await
+        .expect(&format!("{}: failed to download client jar", musutils::types::Status::Err.as_colored_str()));
+    
+    println!("{}: we have client.jar! :3",musutils::types::Status::Ok.as_colored_str());
+
+
+
+}
 
