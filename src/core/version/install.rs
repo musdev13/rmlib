@@ -91,6 +91,21 @@ pub async fn install(version_id: String, versions_path_option: Option<PathBuf>, 
     
     println!("{}: we have client.jar! :3",musutils::types::Status::Ok.as_colored_str());
 
+    
+
+    println!("{}", line.clone());
+    println!("{}: downloading libraries...", musutils::types::Status::Task.as_colored_str());
+    
+    let mut libs_downloader = musutils::http::AsyncDownloader::new(5, musutils::http::async_downloader::HashAlgo::Sha1);
+
+    let my_os = match musutils::os::get_os() {
+        musutils::os::OS::Windows => "windows",
+        musutils::os::OS::Linux => "linux",
+        musutils::os::OS::MacOs => "osx",
+        musutils::os::OS::Unknown => "unknown",
+    };
+
+    libs_downloader.join().await.expect(&format!("{}: something happened with libs_downloader.. hehe... sowwy :3...",musutils::types::Status::Err.as_colored_str()));
 
 
 }
