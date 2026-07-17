@@ -2,6 +2,13 @@
 name = "rmlib"
 version = "0.1.0"
 edition = "2024"
+authors = ["Mus <cuteemus@gmail.com>"]
+description = "Rust Minecraft Launcher library"
+license = "LGPL-3.0-only"
+repository = "https://gitlab.com/cuteemus/rmlib"
+keywords = ["minecraft", "launcher", "game"]
+categories = ["game-engines"]
+copyright = "Copyright (c) 2026 Mus"
 
 [dependencies]
 serde_json = "1.0.150"
