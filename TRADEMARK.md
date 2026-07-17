@@ -4,28 +4,32 @@
 
 ## EN
 
-The names **"rml"** and **"musutils"** and their associated logos are trademarks of Mus.
+**"rmlib"** is part of the **rml** brand and is a trademark of Mus.
 
-### Permitted Use
+This repository contains the **core library** for building Minecraft launchers in Rust.
 
-You may use the names **"rml"** and **"musutils"** in your project **only** to refer to this library as a dependency or component (e.g., "uses rml", "built with musutils", "powered by rml").
+### Code
 
-### Prohibited Use
+The code in this repository is protected by the **LGPL-3.0** license.  
+Any modifications or improvements to the library must be shared with the community.
 
-You may not:
+### Trademark
 
-- Rename this library and distribute it under a different name **for any reason**.
-- Use the names **"rml"** or **"musutils"** as the name of your own project, product, or company.
-- Remove or alter the copyright notices in the source code.
+You may **not**:
+- Rename this library and distribute it under a different name.
+- Use the name **"rmlib"** as the name of your own project, product, or company.
+- Remove or alter the copyright notices.
 - Claim ownership or authorship of this library.
-- Fork the code and distribute it as a separate library (whether renamed or not) without explicit permission.
 
 ### Forking
 
-You may fork the code **for personal use or to submit improvements** via Pull Requests.  
-However, you may **not** distribute your fork as a standalone project or library without explicit permission from the author.
+You may fork this library **for personal use or to submit improvements** via Pull Requests.  
+However, you may **not** distribute your fork as a standalone library without explicit permission.
 
-All distributed versions of this code must remain under the control of the original project (rml/musutils) unless otherwise agreed.
+---
+
+For the full brand policy, see:
+→ [rml/TRADEMARK.md](https://gitlab.com/cuteemus/rml/-/blob/main/TRADEMARK.md)
 
 ---
 
@@ -35,28 +39,32 @@ For explicit permission, contact: cuteemus@gmail.com
 
 ## RU
 
-Имена **"rml"** и **"musutils"** и связанные с ними логотипы являются товарными знаками Mus.
+**"rmlib"** является частью бренда **rml** и товарным знаком Mus.
 
-### Разрешённое использование
+Этот репозиторий содержит **основную библиотеку** для создания лаунчеров Minecraft на Rust.
 
-Вы можете использовать имена **"rml"** и **"musutils"** в своём проекте **только** для указания на эту библиотеку как на зависимость или компонент (например, "использует rml", "сделано с musutils", "работает на rml").
+### Код
 
-### Запрещённое использование
+Код в этом репозитории защищён лицензией **LGPL-3.0**.  
+Любые изменения или улучшения библиотеки должны быть возвращены сообществу.
+
+### Товарный знак
 
 Запрещается:
-
-- Переименовывать эту библиотеку и распространять под другим именем **по любой причине**.
-- Использовать имена **"rml"** или **"musutils"** как название своего проекта, продукта или компании.
-- Удалять или изменять уведомления об авторских правах в исходном коде.
-- Присваивать себе право собственности или авторства на эту библиотеку.
-- Форкать код и распространять его как отдельную библиотеку (переименованную или нет) без явного разрешения.
+- Переименовывать эту библиотеку и распространять под другим именем.
+- Использовать имя **"rmlib"** как название своего проекта, продукта или компании.
+- Удалять или изменять уведомления об авторских правах.
+- Присваивать себе авторство на эту библиотеку.
 
 ### Форки
 
-Вы можете форкать код **для личного использования или для отправки улучшений** через Pull Requests.  
-Однако вы **не можете** распространять свой форк как самостоятельный проект или библиотеку без явного разрешения от автора.
+Вы можете форкать эту библиотеку **для личного использования или для отправки улучшений** через Pull Requests.  
+Однако вы **не можете** распространять свой форк как самостоятельную библиотеку без явного разрешения.
 
-Все распространяемые версии этого кода должны оставаться под контролем исходного проекта (rml/musutils), если не согласовано иное.
+---
+
+Полная политика бренда:
+→ [rml/TRADEMARK.md](https://gitlab.com/cuteemus/rml/-/blob/main/TRADEMARK.md)
 
 ---
 
