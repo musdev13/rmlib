@@ -6,7 +6,9 @@ pub async fn install(version_id: String, versions_path_option: Option<PathBuf>, 
     let line = musutils::types::line::draw_colored('=', 35, musutils::color::Colors::Yellow);
 
     println!("{}: fetching `{}`...", musutils::types::Status::Task.as_colored_str(), &version_id);
+    
     let version_json_str = core::version::get_version_json(version_id.clone()).await;
+
     println!("{}\n{}\n{}",line.clone(), version_json_str.clone(), line.clone());
     println!("{}: version `{}` found!", musutils::types::Status::Ok.as_colored_str(), version_id);
 
@@ -66,19 +68,15 @@ pub async fn install(version_id: String, versions_path_option: Option<PathBuf>, 
     println!("{}: parsing and downloading client jar...", musutils::types::Status::Task.as_colored_str());
     
     let version_json: serde_json::Value = serde_json::from_str(&version_json_str)
-    .expect(&format!("{}: can't parse client jar url", musutils::types::Status::Err.as_colored_str()));
-
+        .expect(&format!("{}: can't parse client jar url", musutils::types::Status::Err.as_colored_str()));
     let downloads = version_json.get("downloads")
         .expect(&format!("{}: 'downloads' field is missing", musutils::types::Status::Err.as_colored_str()));
-
     let client = downloads.get("client")
         .expect(&format!("{}: 'client' field is missing in downloads", musutils::types::Status::Err.as_colored_str()));
-
     let client_sha1 = client.get("sha1")
         .and_then(|v| v.as_str())
         .expect(&format!("{}: 'sha1' field is missing or not a string", musutils::types::Status::Err.as_colored_str()))
         .to_string();
-
     let client_url = client.get("url")
         .and_then(|v| v.as_str())
         .expect(&format!("{}: 'url' field is missing or not a string", musutils::types::Status::Err.as_colored_str()))
@@ -96,7 +94,7 @@ pub async fn install(version_id: String, versions_path_option: Option<PathBuf>, 
     println!("{}", line.clone());
     println!("{}: downloading libraries...", musutils::types::Status::Task.as_colored_str());
     
-    let mut libs_downloader = musutils::http::AsyncDownloader::new(5, musutils::http::async_downloader::HashAlgo::Sha1);
+    let mut libs_downloader = musutils::http::AsyncDownloader::new(50, musutils::http::async_downloader::HashAlgo::Sha1);
 
     let my_os = match musutils::os::get_os() {
         musutils::os::OS::Windows => "windows",
@@ -105,8 +103,65 @@ pub async fn install(version_id: String, versions_path_option: Option<PathBuf>, 
         musutils::os::OS::Unknown => "unknown",
     };
 
+    if let Some(libraries) = version_json.get("libraries").and_then(|l| l.as_array()) {
+        for library in libraries {
+            let mut is_allowed = true;
+
+            if let Some(rules) = library.get("rules").and_then(|r| r.as_array()) {
+                is_allowed = false;
+
+                for rule in rules {
+                    let action = rule.get("action").and_then(|a| a.as_str()).unwrap_or("allow");
+                    let is_allow_action = action == "allow";
+                
+                    if let Some(os_filter) = rule.get("os") {
+                        if let Some(os_name) = os_filter.get("name").and_then(|n| n.as_str()) {
+                            if os_name == my_os {
+                                is_allowed = is_allow_action;
+                            }
+                        }
+                    } else {
+                        is_allowed = is_allow_action;
+                    }
+                }
+            }
+
+            if !is_allowed {
+                continue;
+            }
+
+            if let Some(downloads) = library.get("downloads") {
+                if let Some(artifact) = downloads.get("artifact") {
+                    let path = artifact.get("path").and_then(|v| v.as_str()).unwrap_or("");
+                    let sha1 = artifact.get("sha1").and_then(|v| v.as_str()).map(|s| s.to_string());
+                    let url = artifact.get("url").and_then(|v| v.as_str()).unwrap_or("");
+
+                    if url.is_empty() || path.is_empty() {
+                        continue;
+                    }
+
+                    let lib_path = libs_path.join(path);
+
+                    println!(
+                        "{}: Adding library to queue -> {}",
+                        musutils::types::Status::Inf.as_colored_str(),
+                        path
+                    );
+                    
+                    libs_downloader.push(
+                        url.to_string(),
+                        lib_path,
+                        sha1,
+                        Some(format!("{}: {{0}} downloaded", musutils::types::Status::Ok.as_colored_str())),
+                    );
+                }
+            }
+        }
+    }
+
+    println!("{}: waiting downloading tasks",musutils::types::Status::Task.as_colored_str());
     libs_downloader.join().await.expect(&format!("{}: something happened with libs_downloader.. hehe... sowwy :3...",musutils::types::Status::Err.as_colored_str()));
+    println!("{}: libs downloaded", musutils::types::Status::Ok.as_colored_str());
 
-
+    
 }
-
