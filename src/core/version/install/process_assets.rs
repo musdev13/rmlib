@@ -5,6 +5,7 @@ use musutils;
 pub async fn process_assets(
     version_json: &serde_json::Value,
     assets_path: &Path,
+    aassets: usize
 ) {
     println!("{}: processing assets...", musutils::types::Status::Task.as_colored_str());
 
@@ -41,7 +42,7 @@ pub async fn process_assets(
     if let Ok(index_content) = fs::read_to_string(&index_file_path) {
         if let Ok(index_json) = serde_json::from_str::<serde_json::Value>(&index_content) {
             if let Some(objects) = index_json.get("objects").and_then(|o| o.as_object()) {
-                let mut assets_downloader = musutils::http::AsyncDownloader::new(350, musutils::http::async_downloader::HashAlgo::Sha1);
+                let mut assets_downloader = musutils::http::AsyncDownloader::new(aassets, musutils::http::async_downloader::HashAlgo::Sha1);
                 let mut legacy_copies = Vec::new();
 
                 let is_legacy = version_json.get("assets")

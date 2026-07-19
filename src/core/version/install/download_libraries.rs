@@ -5,10 +5,11 @@ pub async fn download_libraries(
     version_json: &serde_json::Value,
     libs_path: &Path,
     line: &str,
+    alibs: usize
 ) {
     println!("{}: downloading libraries...", musutils::types::Status::Task.as_colored_str());
     
-    let mut libs_downloader = musutils::http::AsyncDownloader::new(150, musutils::http::async_downloader::HashAlgo::Sha1);
+    let mut libs_downloader = musutils::http::AsyncDownloader::new(alibs, musutils::http::async_downloader::HashAlgo::Sha1);
 
     let my_os = match musutils::os::get_os() {
         musutils::os::OS::Windows => "windows",
