@@ -13,7 +13,7 @@ pub async fn install(
     ilibs: bool,
     iassets: bool,
     alibs: usize,
-    aassets: usize
+    aassets: usize,
 ){
     let line = musutils::types::line::draw_colored('=', 35, musutils::color::Colors::Yellow);
 
@@ -51,12 +51,12 @@ pub async fn install(
     }
     if ilibs {
         println!("{}", line.clone());
-        version::install::download_libraries(&version_json, &libs_path, &line, alibs).await;
+        version::install::download_libraries(&version_json, &libs_path, &line, alibs, soft).await;
         println!("{}", line.clone());
         version::install::extract_native_libraries(&libs_path);
     }
     if iassets{
         println!("{}", line.clone());
-        version::install::process_assets(&version_json, &assets_path, aassets).await;
+        version::install::process_assets(&version_json, &assets_path, aassets, soft).await;
     }
 }

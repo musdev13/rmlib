@@ -5,7 +5,8 @@ pub async fn download_libraries(
     version_json: &serde_json::Value,
     libs_path: &Path,
     line: &str,
-    alibs: usize
+    alibs: usize,
+    soft: bool,
 ) {
     println!("{}: downloading libraries...", musutils::types::Status::Task.as_colored_str());
     
@@ -155,6 +156,10 @@ pub async fn download_libraries(
             }
 
             let lib_path = libs_path.join(&final_path);
+
+            if soft && lib_path.exists() {
+                continue;
+            }
 
             println!(
                 "{}: Adding library to queue -> {}",

@@ -5,7 +5,8 @@ use musutils;
 pub async fn process_assets(
     version_json: &serde_json::Value,
     assets_path: &Path,
-    aassets: usize
+    aassets: usize,
+    soft: bool,
 ) {
     println!("{}: processing assets...", musutils::types::Status::Task.as_colored_str());
 
@@ -63,6 +64,10 @@ pub async fn process_assets(
                             legacy_copies.push((object_file_path.clone(), legacy_target));
                         }
 
+                        if soft && object_file_path.exists() {
+                            continue;
+                        }
+
                         println!(
                             "{}: Adding asset to queue -> {} ({})",
                             musutils::types::Status::Inf.as_colored_str(),
@@ -89,6 +94,10 @@ pub async fn process_assets(
                     musutils::fs::new_dir(&virtual_legacy_dir);
                     
                     for (src, dst) in legacy_copies {
+                        if soft && dst.exists() {
+                            continue;
+                        }
+                        
                         if musutils::fs::is_exist(&src) {
                             if let Some(parent) = dst.parent() {
                                 musutils::fs::new_dir(parent);
