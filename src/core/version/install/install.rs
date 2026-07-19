@@ -47,7 +47,7 @@ pub async fn install(
 
     if iclient {
         println!("{}", line.clone());
-        version::install::download_client_jar(&version_json, &version_path, &version_id).await;
+        version::install::download_client_jar(&version_json, &version_path, &version_id, soft).await;
     }
     if ilibs {
         println!("{}", line.clone());
