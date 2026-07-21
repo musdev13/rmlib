@@ -180,6 +180,7 @@ pub async fn run_client(
     uuid: &str,
     token: &str,
     ely: bool,
+    betafix: bool,
     versions_path: &str,
     assets_path: &str,
     libs_path: &str,
@@ -187,6 +188,8 @@ pub async fn run_client(
     game_path: &str,
 ) {
     println!("{}: preparing launch sequence...", musutils::types::Status::Task.as_colored_str());
+
+    let mut _proxy_guard = None;
 
     let norm_versions = musutils::fs::tilda_desir(versions_path);
     let norm_assets = musutils::fs::tilda_desir(assets_path);
@@ -257,6 +260,7 @@ pub async fn run_client(
     placeholders.insert("assets_root".to_string(), norm_assets.to_string_lossy().into_owned());
     placeholders.insert("assets_index_name".to_string(), asset_index_name);
     placeholders.insert("natives_directory".to_string(), norm_native.to_string_lossy().into_owned());
+    placeholders.insert("game_assets".to_string(), norm_assets.to_string_lossy().into_owned());
 
     let context = LaunchContext {
         my_os,
@@ -283,17 +287,33 @@ pub async fn run_client(
     jvm_args.push(format!("-Xmx{}", ram_count));
 
     if ely {
-        let injector_path = norm_libs.join("authlib-injector.jar");
-        if injector_path.exists() {
-            jvm_args.push(format!("-javaagent:{}=ely.by", injector_path.to_string_lossy()));
+        if !betafix{
+            let injector_path = norm_libs.join("authlib-injector.jar");
+            if injector_path.exists() {
+                jvm_args.push(format!("-javaagent:{}=ely.by", injector_path.to_string_lossy()));
+            } else {
+                println!(
+                    "{}: Ely.by requested but authlib-injector.jar not found at {:?}",
+                    musutils::types::Status::Warn.as_colored_str(),
+                    injector_path
+                );
+            }
+
         } else {
-            println!(
-                "{}: Ely.by requested but authlib-injector.jar not found at {:?}",
-                musutils::types::Status::Warn.as_colored_str(),
-                injector_path
-            );
+            let proxy_port = 43523;
+
+            _proxy_guard = crate::extra::ely::start_beta_proxy(proxy_port);
+
+            jvm_args.push("-Dhttp.proxyHost=127.0.0.1".to_string());
+            jvm_args.push(format!("-Dhttp.proxyPort={}", proxy_port));
+            jvm_args.push("-Dhttp.nonProxyHosts=localhost|127.0.0.1".to_string());
+        }
+    } else {
+        if betafix{
+            jvm_args.push("-Dhttp.proxyHost=betacraft.uk".to_string());
         }
     }
+
 
     let mut game_args = Vec::new();
 
