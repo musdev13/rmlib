@@ -3,3 +3,4 @@ pub mod config;
 pub mod version;
 pub mod types;
 pub mod run;
+pub mod auth;
