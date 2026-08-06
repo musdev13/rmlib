@@ -39,24 +39,34 @@ pub fn extract_native_libraries(libs_path: &Path) {
     let _ = scan_dir(libs_path, &mut jar_files);
 
     for jar_path in jar_files {
-        let jar_name = jar_path.file_name().and_then(|n| n.to_str()).unwrap_or("");
-
-        if !jar_name.contains("native") && !jar_name.contains("platform") {
-            continue;
-        }
-
         if let Ok(file) = fs::File::open(&jar_path) {
             if let Ok(mut archive) = zip::ZipArchive::new(file) {
+                let mut contains_native_ext = false;
+                if !target_ext.is_empty() {
+                    for i in 0..archive.len() {
+                        if let Ok(file) = archive.by_index(i) {
+                            if file.name().ends_with(target_ext) {
+                                contains_native_ext = true;
+                                break;
+                            }
+                        }
+                    }
+                }
+
+                if !contains_native_ext {
+                    continue;
+                }
+
                 for i in 0..archive.len() {
                     if let Ok(mut file) = archive.by_index(i) {
-                        let name = file.name();
+                        let name = file.name().to_string();
 
                         if name.contains("META-INF") || file.is_dir() {
                             continue;
                         }
 
                         if !target_ext.is_empty() && name.ends_with(target_ext) {
-                            if let Some(file_name) = Path::new(name).file_name() {
+                            if let Some(file_name) = Path::new(&name).file_name() {
                                 let out_path = natives_target_path.join(file_name);
 
                                 if let Ok(mut out_file) = fs::File::create(&out_path) {

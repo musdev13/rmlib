@@ -11,12 +11,8 @@ pub fn verify_libraries(
 ) -> Vec<ResolvedLibrary> {
     let mut classpath_entries = Vec::new();
 
-    let os_native_key = match context.my_os.as_str() {
-        "windows" => "natives-windows",
-        "linux" => "natives-linux",
-        "osx" => "natives-macos",
-        _ => "unknown",
-    };
+    let os_str = context.my_os.as_str();
+    let arch_str = context.my_arch.as_str();
 
     let build_maven_path = |name: &str| -> Option<String> {
         let parts: Vec<&str> = name.split(':').collect();
@@ -43,51 +39,80 @@ pub fn verify_libraries(
             let name = library.get("name").and_then(|n| n.as_str()).unwrap_or("");
             if name.is_empty() { continue; }
 
-            if name.contains(":natives-") && !name.contains(os_native_key) {
-                continue;
+            if name.contains("natives-") {
+                let is_current_os = name.contains(&format!("natives-{}", os_str))
+                    || (os_str == "osx" && name.contains("natives-macos"));
+                if !is_current_os {
+                    continue;
+                }
             }
 
-            let mut rel_path = String::new();
+            let mut rel_paths = Vec::new();
+
             let native_classifier = library.get("natives")
                 .and_then(|n| n.get(&context.my_os))
                 .and_then(|c| c.as_str())
-                .map(|c| c.replace("${arch}", &context.my_arch));
+                .map(|c| c.replace("${arch}", arch_str));
 
             if let Some(downloads) = library.get("downloads") {
                 if let Some(ref classifier) = native_classifier {
                     if let Some(classifier_obj) = downloads.get("classifiers").and_then(|c| c.get(classifier)) {
-                        rel_path = classifier_obj.get("path").and_then(|v| v.as_str()).unwrap_or("").to_string();
+                        if let Some(p) = classifier_obj.get("path").and_then(|v| v.as_str()) {
+                            rel_paths.push(p.to_string());
+                        }
                     }
-                } else if let Some(artifact) = downloads.get("artifact") {
-                    rel_path = artifact.get("path").and_then(|v| v.as_str()).unwrap_or("").to_string();
+                }
+
+                if let Some(artifact) = downloads.get("artifact") {
+                    if let Some(p) = artifact.get("path").and_then(|v| v.as_str()) {
+                        rel_paths.push(p.to_string());
+                    }
+                }
+
+                if rel_paths.is_empty() {
+                    if let Some(classifiers) = downloads.get("classifiers").and_then(|c| c.as_object()) {
+                        for (key, val) in classifiers {
+                            let key_matches_os = key.contains(os_str) || (os_str == "osx" && key.contains("macos"));
+                            if key_matches_os {
+                                if let Some(p) = val.get("path").and_then(|v| v.as_str()) {
+                                    rel_paths.push(p.to_string());
+                                }
+                            }
+                        }
+                    }
                 }
             }
 
-            if rel_path.is_empty() {
+            if rel_paths.is_empty() {
                 if let Some(maven_path) = build_maven_path(name) {
-                    rel_path = maven_path;
+                    rel_paths.push(maven_path);
                 }
             }
-
-            if rel_path.is_empty() { continue; }
 
             let group_artifact = get_library_group_artifact(name);
-            let key = if let Some(ref classifier) = native_classifier {
-                format!("{}:{}", group_artifact, classifier)
-            } else {
-                group_artifact
-            };
 
-            let full_lib_path = libs_path.join(&rel_path);
+            for rel_path in rel_paths {
+                if rel_path.is_empty() { continue; }
 
-            if !full_lib_path.exists() {
-                println!(
-                    "{}: Missing library -> {}",
-                    musutils::types::Status::Warn.as_colored_str(),
-                    full_lib_path.display()
-                );
-            } else {
-                classpath_entries.push(ResolvedLibrary { key, path: full_lib_path });
+                let key = if let Some(ref classifier) = native_classifier {
+                    format!("{}:{}", group_artifact, classifier)
+                } else if name.contains("natives-") {
+                    format!("{}:{}", group_artifact, rel_path)
+                } else {
+                    group_artifact.clone()
+                };
+
+                let full_lib_path = libs_path.join(&rel_path);
+
+                if !full_lib_path.exists() {
+                    println!(
+                        "{}: Missing library -> {}",
+                        musutils::types::Status::Warn.as_colored_str(),
+                        full_lib_path.display()
+                    );
+                } else {
+                    classpath_entries.push(ResolvedLibrary { key, path: full_lib_path });
+                }
             }
         }
     }

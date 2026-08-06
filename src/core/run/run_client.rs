@@ -176,6 +176,7 @@ pub async fn run_client(
 
     let mut jvm_args = Vec::new();
     jvm_args.push(format!("-Xmx{}", ram_count));
+    jvm_args.push(format!("-Djava.library.path={}", norm_native.display()));
 
     if ely {
         if !betafix {
@@ -197,10 +198,8 @@ pub async fn run_client(
             jvm_args.push(format!("-Dhttp.proxyPort={}", proxy_port));
             jvm_args.push("-Dhttp.nonProxyHosts=localhost|127.0.0.1".to_string());
         }
-    } else {
-        if betafix {
-            jvm_args.push("-Dhttp.proxyHost=betacraft.uk".to_string());
-        }
+    } else if betafix {
+        jvm_args.push("-Dhttp.proxyHost=betacraft.uk".to_string());
     }
 
     let mut game_args = Vec::new();
@@ -214,7 +213,6 @@ pub async fn run_client(
             parse_argument_list(game_value, &context, &mut game_args);
         }
     } else if let Some(minecraft_args_str) = version_json.get("minecraftArguments").and_then(|a| a.as_str()) {
-        jvm_args.push(format!("-Djava.library.path={}", norm_native.display()));
         for split_arg in minecraft_args_str.split_whitespace() {
             game_args.push(split_arg.to_string());
         }
