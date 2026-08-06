@@ -19,7 +19,7 @@ pub async fn install(
 
     let (version_id, version_json_str) = version::install::resolve_version_data(version_id, json_path).await;
 
-    println!("{}\n{}\n{}", line.clone(), version_json_str.clone(), line.clone());
+    // println!("{}\n{}\n{}", line.clone(), version_json_str.clone(), line.clone());
     println!("{}: version `{}` found!", musutils::types::Status::Ok.as_colored_str(), version_id);
 
     println!("{}", line.clone());
