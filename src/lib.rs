@@ -13,3 +13,5 @@
 
 pub mod core;
 pub mod extra;
+
+pub const VERSION: &str = env!("CARGO_PKG_VERSION");
