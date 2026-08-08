@@ -1,39 +1,5 @@
 use reqwest::Client;
-use serde::{Deserialize, Serialize};
-
-#[derive(Serialize)]
-struct AuthRequest<'a> {
-    username: &'a str,
-    password: &'a str,
-    #[serde(rename = "clientToken")]
-    client_token: &'a str,
-    #[serde(rename = "requestUser")]
-    request_user: bool,
-}
-
-#[derive(Deserialize, Debug)]
-struct ProfileResponse {
-    id: String,
-    name: String,
-}
-
-#[derive(Deserialize, Debug)]
-struct AuthApiResponse {
-    #[serde(rename = "accessToken")]
-    access_token: String,
-    #[serde(rename = "clientToken")]
-    client_token: String,
-    #[serde(rename = "selectedProfile")]
-    selected_profile: Option<ProfileResponse>,
-}
-
-#[derive(Debug, Serialize)]
-pub struct AuthResult {
-    pub access_token: String,
-    pub client_token: String,
-    pub profile_id: String,
-    pub profile_name: String,
-}
+use crate::core::auth::ely::dto::*;
 
 pub async fn login(login: String, passwd: String) -> Result<AuthResult, Box<dyn std::error::Error>> {
     let client = Client::new();
