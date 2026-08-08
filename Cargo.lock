@@ -1113,7 +1113,7 @@ dependencies = [
 
 [[package]]
 name = "musutils"
-version = "0.1.0"
+version = "0.3.0"
 dependencies = [
  "home",
  "reqwest 0.12.28",
