@@ -16,3 +16,5 @@ pub mod extra;
 
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");
 pub const NAME: &str = env!("CARGO_PKG_NAME");
+pub const CLIENT_TOKEN: &str = "93301754-cd11-4a00-bd50-f69dffaf4b0b";
+pub const CLIENT_ID: &str = "00000000402b5328";
