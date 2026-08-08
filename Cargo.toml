@@ -1,6 +1,6 @@
 [package]
 name = "rmlib"
-version = "0.4.3"
+version = "0.5.1"
 edition = "2024"
 authors = ["Mus <cuteemus@gmail.com>"]
 description = "Rust Minecraft Launcher library"
@@ -18,3 +18,4 @@ clap = { version = "4.5", features = ["derive"] }
 zip = "2.1"
 sha1 = "0.11.0"
 reqwest = { version = "0.13.4", features = ["blocking","json"] }
+roxmltree = "=0.18.1"

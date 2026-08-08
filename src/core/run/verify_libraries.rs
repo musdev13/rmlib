@@ -15,66 +15,112 @@ pub fn verify_libraries(
     let arch_str = context.my_arch.as_str();
 
     let build_maven_path = |name: &str| -> Option<String> {
+        let name = name.strip_suffix("@jar").unwrap_or(name);
+
         let parts: Vec<&str> = name.split(':').collect();
-        if parts.len() < 3 { return None; }
+
+        if parts.len() < 3 {
+            return None;
+        }
+
         let group = parts[0].replace('.', "/");
         let artifact = parts[1];
         let version = parts[2];
-        if parts.len() == 4 {
-            Some(format!("{}/{}/{}/{}-{}-{}.jar", group, artifact, version, artifact, version, parts[3]))
+
+        if parts.len() >= 4 {
+            let classifier = parts[3];
+
+            Some(format!(
+                "{}/{}/{}/{}-{}-{}.jar",
+                group,
+                artifact,
+                version,
+                artifact,
+                version,
+                classifier
+            ))
         } else {
-            Some(format!("{}/{}/{}/{}-{}.jar", group, artifact, version, artifact, version))
+            Some(format!(
+                "{}/{}/{}/{}-{}.jar",
+                group,
+                artifact,
+                version,
+                artifact,
+                version
+            ))
         }
     };
 
-    if let Some(libraries) = version_json.get("libraries").and_then(|l| l.as_array()) {
+    if let Some(libraries) = version_json
+        .get("libraries")
+        .and_then(|l| l.as_array())
+    {
         for library in libraries {
             let mut is_allowed = true;
+
             if let Some(rules) = library.get("rules").and_then(|r| r.as_array()) {
                 is_allowed = check_rules(rules, context);
             }
 
-            if !is_allowed { continue; }
+            if !is_allowed {
+                continue;
+            }
 
-            let name = library.get("name").and_then(|n| n.as_str()).unwrap_or("");
-            if name.is_empty() { continue; }
+            let name = library
+                .get("name")
+                .and_then(|n| n.as_str())
+                .unwrap_or("");
 
-            if name.contains("natives-") {
-                let is_current_os = name.contains(&format!("natives-{}", os_str))
-                    || (os_str == "osx" && name.contains("natives-macos"));
-                if !is_current_os {
-                    continue;
-                }
+            if name.is_empty() {
+                continue;
             }
 
             let mut rel_paths = Vec::new();
 
-            let native_classifier = library.get("natives")
+            let native_classifier = library
+                .get("natives")
                 .and_then(|n| n.get(&context.my_os))
                 .and_then(|c| c.as_str())
                 .map(|c| c.replace("${arch}", arch_str));
 
             if let Some(downloads) = library.get("downloads") {
                 if let Some(ref classifier) = native_classifier {
-                    if let Some(classifier_obj) = downloads.get("classifiers").and_then(|c| c.get(classifier)) {
-                        if let Some(p) = classifier_obj.get("path").and_then(|v| v.as_str()) {
+                    if let Some(classifier_obj) = downloads
+                        .get("classifiers")
+                        .and_then(|c| c.get(classifier))
+                    {
+                        if let Some(p) = classifier_obj
+                            .get("path")
+                            .and_then(|v| v.as_str())
+                        {
                             rel_paths.push(p.to_string());
                         }
                     }
                 }
 
                 if let Some(artifact) = downloads.get("artifact") {
-                    if let Some(p) = artifact.get("path").and_then(|v| v.as_str()) {
+                    if let Some(p) = artifact
+                        .get("path")
+                        .and_then(|v| v.as_str())
+                    {
                         rel_paths.push(p.to_string());
                     }
                 }
 
                 if rel_paths.is_empty() {
-                    if let Some(classifiers) = downloads.get("classifiers").and_then(|c| c.as_object()) {
+                    if let Some(classifiers) = downloads
+                        .get("classifiers")
+                        .and_then(|c| c.as_object())
+                    {
                         for (key, val) in classifiers {
-                            let key_matches_os = key.contains(os_str) || (os_str == "osx" && key.contains("macos"));
+                            let key_matches_os = key.contains(os_str)
+                                || (os_str == "osx" && key.contains("macos"));
+
                             if key_matches_os {
-                                if let Some(p) = val.get("path").and_then(|v| v.as_str()) {
+                                if let Some(p) = val
+                                    .get("path")
+                                    .and_then(|v| v.as_str())
+                                {
                                     rel_paths.push(p.to_string());
                                 }
                             }
@@ -92,7 +138,9 @@ pub fn verify_libraries(
             let group_artifact = get_library_group_artifact(name);
 
             for rel_path in rel_paths {
-                if rel_path.is_empty() { continue; }
+                if rel_path.is_empty() {
+                    continue;
+                }
 
                 let key = if let Some(ref classifier) = native_classifier {
                     format!("{}:{}", group_artifact, classifier)
@@ -111,10 +159,14 @@ pub fn verify_libraries(
                         full_lib_path.display()
                     );
                 } else {
-                    classpath_entries.push(ResolvedLibrary { key, path: full_lib_path });
+                    classpath_entries.push(ResolvedLibrary {
+                        key,
+                        path: full_lib_path,
+                    });
                 }
             }
         }
     }
+
     classpath_entries
 }
