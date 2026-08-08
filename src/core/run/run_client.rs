@@ -374,63 +374,26 @@ pub async fn run_client(
         }
     }
 
-    
     if neoforge_version.is_some() {
-        let module_lib_names = [
-            "securejarhandler-2.1.24.jar",
-            "asm-9.5.jar",
-            "asm-commons-9.5.jar",
-            "asm-tree-9.5.jar",
-            "asm-util-9.5.jar",
-            "asm-analysis-9.5.jar",
-            "bootstraplauncher-1.1.2.jar",
-            "JarJarFileSystems-0.4.0.jar",
-        ];
-
-        let mut module_paths = Vec::new();
-
-        for lib in &raw_libs {
-            if let Some(file_name) = lib.path.file_name().and_then(|v| v.to_str()) {
-                if module_lib_names.contains(&file_name) {
-                    module_paths.push(lib.path.to_string_lossy().into_owned());
-                }
+        let has_module_path = jvm_args.iter().enumerate().any(|(index, arg)| {
+            if arg == "-p" || arg == "--module-path" {
+                index + 1 < jvm_args.len()
+            } else {
+                false
             }
-        }
+        });
 
-        if module_paths.is_empty() {
-            println!(
-                "{}: NeoForge module libraries were not resolved",
-                musutils::types::Status::Err.as_colored_str()
-            );
-            return;
-        }
-
-        let module_path = module_paths.join(classpath_separator);
-
-        let mut rebuilt_jvm_args = Vec::with_capacity(jvm_args.len() + 1);
-        let mut skip_next = false;
-
-        for index in 0..jvm_args.len() {
-            if skip_next {
-                skip_next = false;
-                continue;
+        let has_classpath = jvm_args.iter().enumerate().any(|(index, arg)| {
+            if arg == "-cp" || arg == "-classpath" {
+                index + 1 < jvm_args.len()
+            } else {
+                arg.starts_with("-classpath")
             }
+        });
 
-            if jvm_args[index] == "-p" || jvm_args[index] == "--module-path" {
-                rebuilt_jvm_args.push("-p".to_string());
-                rebuilt_jvm_args.push(module_path.clone());
-                skip_next = true;
-                continue;
-            }
-
-            rebuilt_jvm_args.push(jvm_args[index].clone());
-        }
-
-        jvm_args = rebuilt_jvm_args;
-
-        if !jvm_args.iter().any(|arg| arg == "-p") {
-            jvm_args.push("-p".to_string());
-            jvm_args.push(module_path);
+        if !has_module_path && !has_classpath {
+            jvm_args.push("-cp".to_string());
+            jvm_args.push(final_classpath.clone());
         }
     } else if !jvm_args.contains(&"-cp".to_string())
         && !jvm_args
