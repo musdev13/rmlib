@@ -17,7 +17,9 @@ pub async fn run_client(
     libs_path: &str,
     native_path: &str,
     game_path: &str,
-    spawn_path: &str
+    spawn_path: &str,
+    custom_jvm_args: &[String],
+    custom_game_args: &[String],
 ) {
     println!(
         "{}: preparing launch sequence...",
@@ -39,6 +41,8 @@ pub async fn run_client(
         libs_path,
         native_path,
         game_path,
+        custom_jvm_args,
+        custom_game_args,
     ) {
         Ok(command) => command,
 
@@ -53,7 +57,12 @@ pub async fn run_client(
     };
 
     let norm_spawn_path = musutils::fs::tilda_desir(spawn_path);
-    println!("{}: spawn dir - {}", musutils::types::Status::Inf.as_colored_str(), norm_spawn_path.display());
+
+    println!(
+        "{}: spawn dir - {}",
+        musutils::types::Status::Inf.as_colored_str(),
+        norm_spawn_path.display()
+    );
 
     println!(
         "{}: spawning java process...",

@@ -5,8 +5,16 @@ mod replace_placeholders;
 mod get_library_group_artifact;
 mod verify_libraries;
 mod build_command;
+mod prepare_paths;
+mod load_version_data;
+mod resolve_environment;
+mod build_classpath;
+mod build_launch_context;
+mod build_arguments;
+mod assemble_command;
 
 pub mod dto;
+
 pub use check_rules::check_rules;
 pub use run_client::run_client;
 pub use parse_argument_list::parse_argument_list;
@@ -14,3 +22,10 @@ pub use replace_placeholders::replace_placeholders;
 pub use get_library_group_artifact::get_library_group_artifact;
 pub use verify_libraries::verify_libraries;
 pub use build_command::build_command;
+pub use prepare_paths::prepare_paths;
+pub use load_version_data::load_version_data;
+pub use resolve_environment::resolve_environment;
+pub use build_classpath::build_classpath;
+pub use build_launch_context::build_launch_context;
+pub use build_arguments::build_arguments;
+pub use assemble_command::assemble_command;
