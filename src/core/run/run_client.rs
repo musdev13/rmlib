@@ -43,6 +43,7 @@ pub async fn run_client(
         game_path,
         custom_jvm_args,
         custom_game_args,
+        false
     ) {
         Ok(command) => command,
 

@@ -17,6 +17,7 @@ pub fn load_version_data(
     fabric_version: Option<&str>,
     neoforge_version: Option<&str>,
     paths: &LaunchPaths,
+    logs: bool,
 ) -> Result<VersionData, String> {
     let json_content = fs::read_to_string(&paths.version_json)
         .map_err(|e| format!("failed to read client json: {}", e))?;
@@ -33,7 +34,8 @@ pub fn load_version_data(
             .join(format!("{}.json", fab_ver));
 
         if fabric_json_path.exists() {
-            println!(
+            musutils::log!(
+                logs,
                 "{}: loading Fabric profile JSON from {:?}",
                 musutils::types::Status::Inf.as_colored_str(),
                 fabric_json_path
@@ -41,11 +43,10 @@ pub fn load_version_data(
 
             fs::read_to_string(&fabric_json_path)
                 .ok()
-                .and_then(|content| {
-                    serde_json::from_str::<Value>(&content).ok()
-                })
+                .and_then(|content| serde_json::from_str::<Value>(&content).ok())
         } else {
-            println!(
+            musutils::log!(
+                logs,
                 "{}: Fabric version `{}` requested, but profile JSON was not found at {:?}",
                 musutils::types::Status::Warn.as_colored_str(),
                 fab_ver,
@@ -64,7 +65,8 @@ pub fn load_version_data(
             .join(format!("{}.json", neoforge_ver));
 
         if neoforge_json_path.exists() {
-            println!(
+            musutils::log!(
+                logs,
                 "{}: loading NeoForge profile JSON from {:?}",
                 musutils::types::Status::Inf.as_colored_str(),
                 neoforge_json_path
@@ -72,11 +74,10 @@ pub fn load_version_data(
 
             fs::read_to_string(&neoforge_json_path)
                 .ok()
-                .and_then(|content| {
-                    serde_json::from_str::<Value>(&content).ok()
-                })
+                .and_then(|content| serde_json::from_str::<Value>(&content).ok())
         } else {
-            println!(
+            musutils::log!(
+                logs,
                 "{}: NeoForge version `{}` requested, but profile JSON was not found at {:?}",
                 musutils::types::Status::Warn.as_colored_str(),
                 neoforge_ver,

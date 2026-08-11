@@ -25,6 +25,7 @@ pub fn build_command(
     game_path: &str,
     custom_jvm_args: &[String],
     custom_game_args: &[String],
+    logs: bool
 ) -> Result<String, String> {
     let paths = prepare_paths(
         version_id,
@@ -40,6 +41,7 @@ pub fn build_command(
         fabric_version,
         neoforge_version,
         &paths,
+        logs
     )?;
 
     let environment = resolve_environment();
@@ -75,6 +77,7 @@ pub fn build_command(
         &classpath,
         custom_jvm_args,
         custom_game_args,
+        logs
     );
 
     Ok(assemble_command(

@@ -20,6 +20,7 @@ pub fn build_arguments(
     classpath: &ClasspathData,
     custom_jvm_args: &[String],
     custom_game_args: &[String],
+    logs: bool,
 ) -> LaunchArguments {
     let mut jvm_args = Vec::new();
 
@@ -40,7 +41,8 @@ pub fn build_arguments(
                     injector_path.to_string_lossy()
                 ));
             } else {
-                println!(
+                musutils::log!(
+                    logs,
                     "{}: Ely.by requested but authlib-injector.jar not found at {:?}",
                     musutils::types::Status::Warn.as_colored_str(),
                     injector_path
@@ -49,22 +51,16 @@ pub fn build_arguments(
         } else {
             let proxy_port = 43523;
 
-            jvm_args.push(
-                "-Dhttp.proxyHost=127.0.0.1".to_string()
-            );
+            jvm_args.push("-Dhttp.proxyHost=127.0.0.1".to_string());
+
+            jvm_args.push(format!("-Dhttp.proxyPort={}", proxy_port));
 
             jvm_args.push(
-                format!("-Dhttp.proxyPort={}", proxy_port)
-            );
-
-            jvm_args.push(
-                "-Dhttp.nonProxyHosts=localhost|127.0.0.1".to_string()
+                "-Dhttp.nonProxyHosts=localhost|127.0.0.1".to_string(),
             );
         }
     } else if betafix {
-        jvm_args.push(
-            "-Dhttp.proxyHost=betacraft.uk".to_string()
-        );
+        jvm_args.push("-Dhttp.proxyHost=betacraft.uk".to_string());
     }
 
     let mut game_args = Vec::new();
