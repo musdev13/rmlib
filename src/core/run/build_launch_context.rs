@@ -10,6 +10,7 @@ pub fn build_launch_context(
     version_id: &str,
     username: &str,
     uuid: &str,
+    xuid: &str,
     token: &str,
     ely: bool,
     version_data: &VersionData,
@@ -116,7 +117,7 @@ pub fn build_launch_context(
 
     placeholders.insert(
         "auth_xuid".to_string(),
-        "placeholder_yet".to_string(),
+        xuid.to_string(),
     );
 
     LaunchContext {
