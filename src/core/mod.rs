@@ -1,4 +1,3 @@
-pub mod auth;
 pub mod config;
 pub mod modloaders;
 pub mod run;

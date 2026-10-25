@@ -1,4 +1,4 @@
-use crate::core::auth::ely::dto::*;
+use super::dto::*;
 use reqwest::Client;
 
 pub async fn login(
