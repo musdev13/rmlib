@@ -1,7 +1,7 @@
+use musutils;
 use std::fs;
 use std::io;
 use std::path::{Path, PathBuf};
-use musutils;
 
 pub fn extract_native_libraries(libs_path: &Path) {
     let natives_target_path = libs_path.join("natives");
@@ -39,40 +39,47 @@ pub fn extract_native_libraries(libs_path: &Path) {
     let _ = scan_dir(libs_path, &mut jar_files);
 
     for jar_path in jar_files {
-        if let Ok(file) = fs::File::open(&jar_path) {
-            if let Ok(mut archive) = zip::ZipArchive::new(file) {
-                let mut contains_native_ext = false;
-                if !target_ext.is_empty() {
-                    for i in 0..archive.len() {
-                        if let Ok(file) = archive.by_index(i) {
-                            if file.name().ends_with(target_ext) {
-                                contains_native_ext = true;
-                                break;
-                            }
-                        }
+        if let Ok(file) = fs::File::open(&jar_path)
+            && let Ok(mut archive) = zip::ZipArchive::new(file)
+        {
+            let mut contains_native_ext = false;
+            if !target_ext.is_empty() {
+                for i in 0..archive.len() {
+                    if let Ok(file) = archive.by_index(i)
+                        && file
+                            .name()
+                            .map(|n| n.ends_with(target_ext))
+                            .unwrap_or(false)
+                    {
+                        contains_native_ext = true;
+                        break;
                     }
                 }
+            }
 
-                if !contains_native_ext {
-                    continue;
-                }
+            if !contains_native_ext {
+                continue;
+            }
 
-                for i in 0..archive.len() {
-                    if let Ok(mut file) = archive.by_index(i) {
-                        let name = file.name().to_string();
+            for i in 0..archive.len() {
+                if let Ok(mut file) = archive.by_index(i) {
+                    let name = match file.name() {
+                        Ok(n) => n.to_string(),
+                        Err(_) => continue,
+                    };
 
-                        if name.contains("META-INF") || file.is_dir() {
-                            continue;
-                        }
+                    if name.contains("META-INF") || file.is_dir() {
+                        continue;
+                    }
 
-                        if !target_ext.is_empty() && name.ends_with(target_ext) {
-                            if let Some(file_name) = Path::new(&name).file_name() {
-                                let out_path = natives_target_path.join(file_name);
+                    if !target_ext.is_empty()
+                        && name.ends_with(target_ext)
+                        && let Some(file_name) = Path::new(&name).file_name()
+                    {
+                        let out_path = natives_target_path.join(file_name);
 
-                                if let Ok(mut out_file) = fs::File::create(&out_path) {
-                                    io::copy(&mut file, &mut out_file).ok();
-                                }
-                            }
+                        if let Ok(mut out_file) = fs::File::create(&out_path) {
+                            io::copy(&mut file, &mut out_file).ok();
                         }
                     }
                 }

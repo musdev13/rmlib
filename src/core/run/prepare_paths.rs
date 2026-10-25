@@ -33,10 +33,7 @@ pub fn prepare_paths(
         .join(format!("{}.jar", version_id));
 
     if !version_json.exists() {
-        return Err(format!(
-            "client json not found at {:?}",
-            version_json
-        ));
+        return Err(format!("client json not found at {:?}", version_json));
     }
 
     Ok(LaunchPaths {

@@ -1,7 +1,7 @@
 use std::io::{Read, Write};
 use std::net::{TcpListener, TcpStream};
-use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::thread;
 use std::time::Duration;
 
@@ -30,12 +30,12 @@ pub fn start_beta_proxy(port: u16) -> Option<ProxyGuard> {
     thread::spawn(move || {
         while running_clone.load(Ordering::Relaxed) {
             listener.set_nonblocking(true).ok();
-            
+
             if let Ok((stream, _)) = listener.accept() {
                 stream.set_read_timeout(Some(Duration::from_secs(2))).ok();
                 thread::spawn(move || handle_proxy_client(stream));
             }
-            
+
             thread::sleep(Duration::from_millis(50));
         }
     });
@@ -60,35 +60,39 @@ fn handle_proxy_client(mut client: TcpStream) {
 
     let url = parts[1];
 
-    if url.contains("/MinecraftSkins/") {
-        if let Some(filename) = url.split("/MinecraftSkins/").nth(1) {
-            let username = filename.split('?').next().unwrap_or(filename).trim_end_matches(".png");
-            
-            println!("[Proxy] Запрос скина для игрока: {}", username);
+    if url.contains("/MinecraftSkins/")
+        && let Some(filename) = url.split("/MinecraftSkins/").nth(1)
+    {
+        let username = filename
+            .split('?')
+            .next()
+            .unwrap_or(filename)
+            .trim_end_matches(".png");
 
-            let target_url = format!("https://skinsystem.ely.by/skins/{}.png", username);
+        println!("[Proxy] Запрос скина для игрока: {}", username);
 
-            let http_client = reqwest::blocking::Client::builder()
-                .user_agent("Mozilla/5.0")
-                .timeout(Duration::from_secs(5))
-                .build();
+        let target_url = format!("https://skinsystem.ely.by/skins/{}.png", username);
 
-            if let Ok(http) = http_client {
-                if let Ok(mut resp) = http.get(&target_url).send() {
-                    println!("[Proxy] Ответ от Ely.by: {}", resp.status());
-                    
-                    if resp.status().is_success() {
-                        let mut img_data = Vec::new();
-                        if resp.read_to_end(&mut img_data).is_ok() {
-                            let header = format!(
-                                "HTTP/1.1 200 OK\r\nContent-Type: image/png\r\nContent-Length: {}\r\nConnection: close\r\n\r\n",
-                                img_data.len()
-                            );
-                            let _ = client.write_all(header.as_bytes());
-                            let _ = client.write_all(&img_data);
-                            return;
-                        }
-                    }
+        let http_client = reqwest::blocking::Client::builder()
+            .user_agent("Mozilla/5.0")
+            .timeout(Duration::from_secs(5))
+            .build();
+
+        if let Ok(http) = http_client
+            && let Ok(mut resp) = http.get(&target_url).send()
+        {
+            println!("[Proxy] Ответ от Ely.by: {}", resp.status());
+
+            if resp.status().is_success() {
+                let mut img_data = Vec::new();
+                if resp.read_to_end(&mut img_data).is_ok() {
+                    let header = format!(
+                        "HTTP/1.1 200 OK\r\nContent-Type: image/png\r\nContent-Length: {}\r\nConnection: close\r\n\r\n",
+                        img_data.len()
+                    );
+                    let _ = client.write_all(header.as_bytes());
+                    let _ = client.write_all(&img_data);
+                    return;
                 }
             }
         }

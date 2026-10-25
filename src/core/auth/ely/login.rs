@@ -1,7 +1,10 @@
-use reqwest::Client;
 use crate::core::auth::ely::dto::*;
+use reqwest::Client;
 
-pub async fn login(login: String, passwd: String) -> Result<AuthResult, Box<dyn std::error::Error>> {
+pub async fn login(
+    login: String,
+    passwd: String,
+) -> Result<AuthResult, Box<dyn std::error::Error>> {
     let client = Client::new();
 
     let request_body = AuthRequest {

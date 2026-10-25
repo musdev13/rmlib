@@ -1,5 +1,7 @@
-use std::path::Path;
 use musutils;
+use std::path::Path;
+
+use musutils::http::HttpError;
 
 pub async fn download_libraries(
     version_json: &serde_json::Value,
@@ -7,10 +9,16 @@ pub async fn download_libraries(
     line: &str,
     alibs: usize,
     soft: bool,
-) {
-    println!("{}: downloading libraries...", musutils::types::Status::Task.as_colored_str());
-    
-    let mut libs_downloader = musutils::http::AsyncDownloader::new(alibs, musutils::http::async_downloader::HashAlgo::Sha1);
+) -> Result<(), Vec<HttpError>> {
+    println!(
+        "{}: downloading libraries...",
+        musutils::types::Status::Task.as_colored_str()
+    );
+
+    let mut libs_downloader = musutils::http::async_downloader::AsyncDownloader::new(
+        alibs,
+        musutils::http::async_downloader::HashAlgo::Sha1,
+    );
 
     let my_os = match musutils::os::get_os() {
         musutils::os::OS::Windows => "windows",
@@ -20,7 +28,7 @@ pub async fn download_libraries(
     };
 
     let my_arch = musutils::os::get_arch();
-    
+
     let my_arch_str = match my_arch {
         musutils::os::Arch::X64 => "64",
         musutils::os::Arch::X86 => "32",
@@ -30,42 +38,20 @@ pub async fn download_libraries(
     };
 
     let (os_native_key, arch_native_key) = match musutils::os::get_os() {
-        musutils::os::OS::Windows => {
-            match my_arch {
-                musutils::os::Arch::Arm64 => ("natives-windows", Some("arm64")),
-                musutils::os::Arch::X86 => ("natives-windows", Some("x86")),
-                _ => ("natives-windows", None),
-            }
+        musutils::os::OS::Windows => match my_arch {
+            musutils::os::Arch::Arm64 => ("natives-windows", Some("arm64")),
+            musutils::os::Arch::X86 => ("natives-windows", Some("x86")),
+            _ => ("natives-windows", None),
         },
-        musutils::os::OS::Linux => {
-            match my_arch {
-                musutils::os::Arch::Arm64 => ("natives-linux", Some("arm64")),
-                _ => ("natives-linux", None),
-            }
+        musutils::os::OS::Linux => match my_arch {
+            musutils::os::Arch::Arm64 => ("natives-linux", Some("arm64")),
+            _ => ("natives-linux", None),
         },
-        musutils::os::OS::MacOs => {
-            match my_arch {
-                musutils::os::Arch::Arm64 => ("natives-macos", Some("arm64")),
-                _ => ("natives-macos", None),
-            }
+        musutils::os::OS::MacOs => match my_arch {
+            musutils::os::Arch::Arm64 => ("natives-macos", Some("arm64")),
+            _ => ("natives-macos", None),
         },
         _ => ("unknown", None),
-    };
-
-    let build_maven_path = |name: &str, classifier: Option<&str>| -> Option<String> {
-        let parts: Vec<&str> = name.split(':').collect();
-        if parts.len() < 3 { return None; }
-        let group = parts[0].replace('.', "/");
-        let artifact = parts[1];
-        let version = parts[2];
-        
-        if let Some(cls) = classifier {
-            Some(format!("{}/{}/{}/{}-{}-{}.jar", group, artifact, version, artifact, version, cls))
-        } else if parts.len() == 4 {
-            Some(format!("{}/{}/{}/{}-{}-{}.jar", group, artifact, version, artifact, version, parts[3]))
-        } else {
-            Some(format!("{}/{}/{}/{}-{}.jar", group, artifact, version, artifact, version))
-        }
     };
 
     if let Some(libraries) = version_json.get("libraries").and_then(|l| l.as_array()) {
@@ -76,14 +62,17 @@ pub async fn download_libraries(
                 is_allowed = false;
 
                 for rule in rules {
-                    let action = rule.get("action").and_then(|a| a.as_str()).unwrap_or("allow");
+                    let action = rule
+                        .get("action")
+                        .and_then(|a| a.as_str())
+                        .unwrap_or("allow");
                     let is_allow_action = action == "allow";
-                
+
                     if let Some(os_filter) = rule.get("os") {
-                        if let Some(os_name) = os_filter.get("name").and_then(|n| n.as_str()) {
-                            if os_name == my_os {
-                                is_allowed = is_allow_action;
-                            }
+                        if let Some(os_name) = os_filter.get("name").and_then(|n| n.as_str())
+                            && os_name == my_os
+                        {
+                            is_allowed = is_allow_action;
                         }
                     } else {
                         is_allowed = is_allow_action;
@@ -96,16 +85,24 @@ pub async fn download_libraries(
             }
 
             let name = library.get("name").and_then(|n| n.as_str()).unwrap_or("");
-            if name.is_empty() { continue; }
+            if name.is_empty() {
+                continue;
+            }
 
             if name.contains(":natives-") {
                 if !name.contains(os_native_key) {
                     continue;
                 }
                 if let Some(arch_key) = arch_native_key {
-                    if !name.contains(arch_key) { continue; }
+                    if !name.contains(arch_key) {
+                        continue;
+                    }
                 } else {
-                    if name.contains("arm64") || name.contains("x86") || name.contains("amd64") || name.contains("-32") {
+                    if name.contains("arm64")
+                        || name.contains("x86")
+                        || name.contains("amd64")
+                        || name.contains("-32")
+                    {
                         continue;
                     }
                 }
@@ -116,21 +113,46 @@ pub async fn download_libraries(
             let mut final_sha1: Option<String> = None;
 
             if let Some(downloads) = library.get("downloads") {
-                let native_classifier = library.get("natives")
+                let native_classifier = library
+                    .get("natives")
                     .and_then(|n| n.get(my_os))
                     .and_then(|c| c.as_str())
                     .map(|c| c.replace("${arch}", my_arch_str));
 
                 if let Some(ref classifier) = native_classifier {
-                    if let Some(classifier_obj) = downloads.get("classifiers").and_then(|c| c.get(classifier)) {
-                        final_url = classifier_obj.get("url").and_then(|v| v.as_str()).unwrap_or("").to_string();
-                        final_path = classifier_obj.get("path").and_then(|v| v.as_str()).unwrap_or("").to_string();
-                        final_sha1 = classifier_obj.get("sha1").and_then(|v| v.as_str()).map(|s| s.to_string());
+                    if let Some(classifier_obj) =
+                        downloads.get("classifiers").and_then(|c| c.get(classifier))
+                    {
+                        final_url = classifier_obj
+                            .get("url")
+                            .and_then(|v| v.as_str())
+                            .unwrap_or("")
+                            .to_string();
+                        final_path = classifier_obj
+                            .get("path")
+                            .and_then(|v| v.as_str())
+                            .unwrap_or("")
+                            .to_string();
+                        final_sha1 = classifier_obj
+                            .get("sha1")
+                            .and_then(|v| v.as_str())
+                            .map(|s| s.to_string());
                     }
                 } else if let Some(artifact) = downloads.get("artifact") {
-                    final_url = artifact.get("url").and_then(|v| v.as_str()).unwrap_or("").to_string();
-                    final_path = artifact.get("path").and_then(|v| v.as_str()).unwrap_or("").to_string();
-                    final_sha1 = artifact.get("sha1").and_then(|v| v.as_str()).map(|s| s.to_string());
+                    final_url = artifact
+                        .get("url")
+                        .and_then(|v| v.as_str())
+                        .unwrap_or("")
+                        .to_string();
+                    final_path = artifact
+                        .get("path")
+                        .and_then(|v| v.as_str())
+                        .unwrap_or("")
+                        .to_string();
+                    final_sha1 = artifact
+                        .get("sha1")
+                        .and_then(|v| v.as_str())
+                        .map(|s| s.to_string());
                 }
             } else {
                 let mut ancient_classifier: Option<String> = None;
@@ -143,9 +165,14 @@ pub async fn download_libraries(
                     }
                 }
 
-                if let Some(maven_path) = build_maven_path(name, ancient_classifier.as_deref()) {
+                if let Some(maven_path) =
+                    crate::core::types::build_maven_path(name, ancient_classifier.as_deref())
+                {
                     final_path = maven_path.clone();
-                    let base_url = library.get("url").and_then(|u| u.as_str()).unwrap_or("https://libraries.minecraft.net/");
+                    let base_url = library
+                        .get("url")
+                        .and_then(|u| u.as_str())
+                        .unwrap_or("https://libraries.minecraft.net/");
                     final_url = format!("{}{}", base_url, maven_path);
                     final_sha1 = None;
                 }
@@ -161,24 +188,37 @@ pub async fn download_libraries(
                 continue;
             }
 
-            println!(
-                "{}: Adding library to queue -> {}",
-                musutils::types::Status::Inf.as_colored_str(),
-                final_path
-            );
-            
-            libs_downloader.push(
-                final_url,
-                lib_path,
-                final_sha1,
-                Some(format!("{}: {{0}} downloaded", musutils::types::Status::Ok.as_colored_str())),
-                Some(format!("{}: {{0}} is downloading now", musutils::types::Status::Inf.as_colored_str())),
-            );
+            libs_downloader.push(final_url, lib_path, final_sha1, None, None);
         }
     }
 
-    println!("{}: waiting downloading tasks", musutils::types::Status::Task.as_colored_str());
-    libs_downloader.join().await.expect(&format!("{}: something happened with libs_downloader.. hehe... sowwy :3...", musutils::types::Status::Err.as_colored_str()));
+    println!(
+        "{}: waiting downloading tasks",
+        musutils::types::Status::Task.as_colored_str()
+    );
+    let join_result = libs_downloader.join().await;
     println!("{}", line);
-    println!("{}: libs downloaded", musutils::types::Status::Ok.as_colored_str());
+    match join_result {
+        Ok(()) => {
+            println!(
+                "{}: libs downloaded",
+                musutils::types::Status::Ok.as_colored_str()
+            );
+            Ok(())
+        }
+        Err(errors) => {
+            eprintln!(
+                "{}: libs download finished with {} error(s)",
+                musutils::types::Status::Err.as_colored_str(),
+                errors.len()
+            );
+            for (i, e) in errors.iter().take(10).enumerate() {
+                eprintln!("  {}. {}", i + 1, e);
+            }
+            if errors.len() > 10 {
+                eprintln!("  ... and {} more", errors.len() - 10);
+            }
+            Err(errors)
+        }
+    }
 }

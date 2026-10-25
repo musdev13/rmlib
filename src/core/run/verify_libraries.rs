@@ -1,5 +1,5 @@
-use std::path::Path;
 use serde_json::Value;
+use std::path::Path;
 
 use crate::core::run::dto::{LaunchContext, ResolvedLibrary};
 use crate::core::run::{check_rules, get_library_group_artifact};
@@ -14,47 +14,7 @@ pub fn verify_libraries(
     let os_str = context.my_os.as_str();
     let arch_str = context.my_arch.as_str();
 
-    let build_maven_path = |name: &str| -> Option<String> {
-        let name = name.strip_suffix("@jar").unwrap_or(name);
-
-        let parts: Vec<&str> = name.split(':').collect();
-
-        if parts.len() < 3 {
-            return None;
-        }
-
-        let group = parts[0].replace('.', "/");
-        let artifact = parts[1];
-        let version = parts[2];
-
-        if parts.len() >= 4 {
-            let classifier = parts[3];
-
-            Some(format!(
-                "{}/{}/{}/{}-{}-{}.jar",
-                group,
-                artifact,
-                version,
-                artifact,
-                version,
-                classifier
-            ))
-        } else {
-            Some(format!(
-                "{}/{}/{}/{}-{}.jar",
-                group,
-                artifact,
-                version,
-                artifact,
-                version
-            ))
-        }
-    };
-
-    if let Some(libraries) = version_json
-        .get("libraries")
-        .and_then(|l| l.as_array())
-    {
+    if let Some(libraries) = version_json.get("libraries").and_then(|l| l.as_array()) {
         for library in libraries {
             let mut is_allowed = true;
 
@@ -66,10 +26,7 @@ pub fn verify_libraries(
                 continue;
             }
 
-            let name = library
-                .get("name")
-                .and_then(|n| n.as_str())
-                .unwrap_or("");
+            let name = library.get("name").and_then(|n| n.as_str()).unwrap_or("");
 
             if name.is_empty() {
                 continue;
@@ -84,55 +41,40 @@ pub fn verify_libraries(
                 .map(|c| c.replace("${arch}", arch_str));
 
             if let Some(downloads) = library.get("downloads") {
-                if let Some(ref classifier) = native_classifier {
-                    if let Some(classifier_obj) = downloads
-                        .get("classifiers")
-                        .and_then(|c| c.get(classifier))
-                    {
-                        if let Some(p) = classifier_obj
-                            .get("path")
-                            .and_then(|v| v.as_str())
+                if let Some(ref classifier) = native_classifier
+                    && let Some(classifier_obj) =
+                        downloads.get("classifiers").and_then(|c| c.get(classifier))
+                    && let Some(p) = classifier_obj.get("path").and_then(|v| v.as_str())
+                {
+                    rel_paths.push(p.to_string());
+                }
+
+                if let Some(artifact) = downloads.get("artifact")
+                    && let Some(p) = artifact.get("path").and_then(|v| v.as_str())
+                {
+                    rel_paths.push(p.to_string());
+                }
+
+                if rel_paths.is_empty()
+                    && let Some(classifiers) =
+                        downloads.get("classifiers").and_then(|c| c.as_object())
+                {
+                    for (key, val) in classifiers {
+                        let key_matches_os =
+                            key.contains(os_str) || (os_str == "osx" && key.contains("macos"));
+
+                        if key_matches_os && let Some(p) = val.get("path").and_then(|v| v.as_str())
                         {
                             rel_paths.push(p.to_string());
                         }
                     }
                 }
-
-                if let Some(artifact) = downloads.get("artifact") {
-                    if let Some(p) = artifact
-                        .get("path")
-                        .and_then(|v| v.as_str())
-                    {
-                        rel_paths.push(p.to_string());
-                    }
-                }
-
-                if rel_paths.is_empty() {
-                    if let Some(classifiers) = downloads
-                        .get("classifiers")
-                        .and_then(|c| c.as_object())
-                    {
-                        for (key, val) in classifiers {
-                            let key_matches_os = key.contains(os_str)
-                                || (os_str == "osx" && key.contains("macos"));
-
-                            if key_matches_os {
-                                if let Some(p) = val
-                                    .get("path")
-                                    .and_then(|v| v.as_str())
-                                {
-                                    rel_paths.push(p.to_string());
-                                }
-                            }
-                        }
-                    }
-                }
             }
 
-            if rel_paths.is_empty() {
-                if let Some(maven_path) = build_maven_path(name) {
-                    rel_paths.push(maven_path);
-                }
+            if rel_paths.is_empty()
+                && let Some(maven_path) = crate::core::types::build_maven_path(name, None)
+            {
+                rel_paths.push(maven_path);
             }
 
             let group_artifact = get_library_group_artifact(name);

@@ -1,7 +1,8 @@
 use std::process::Command;
 
-use crate::core::run::build_command::build_command;
+use crate::core::run::build_command::build_argv;
 
+#[allow(clippy::too_many_arguments)]
 pub async fn run_client(
     version_id: &str,
     fabric_version: Option<&str>,
@@ -27,7 +28,7 @@ pub async fn run_client(
         musutils::types::Status::Task.as_colored_str()
     );
 
-    let command = match build_command(
+    let argv = match build_argv(
         version_id,
         fabric_version,
         neoforge_version,
@@ -45,21 +46,24 @@ pub async fn run_client(
         game_path,
         custom_jvm_args,
         custom_game_args,
-        false
+        false,
     ) {
-        Ok(command) => command,
-
+        Ok(argv) => argv,
         Err(e) => {
-            println!(
-                "{}: {}",
-                musutils::types::Status::Err.as_colored_str(),
-                e
-            );
+            println!("{}: {}", musutils::types::Status::Err.as_colored_str(), e);
             return;
         }
     };
 
-    let norm_spawn_path = musutils::fs::tilda_desir(spawn_path);
+    if argv.is_empty() {
+        println!(
+            "{}: empty command",
+            musutils::types::Status::Err.as_colored_str()
+        );
+        return;
+    }
+
+    let norm_spawn_path = musutils::fs::expand(spawn_path);
 
     println!(
         "{}: spawn dir - {}",
@@ -72,14 +76,12 @@ pub async fn run_client(
         musutils::types::Status::Task.as_colored_str()
     );
 
-    let mut child = match Command::new("sh")
-        .arg("-c")
-        .arg(&command)
+    let mut child = match Command::new(&argv[0])
+        .args(&argv[1..])
         .current_dir(&norm_spawn_path)
         .spawn()
     {
         Ok(child) => child,
-
         Err(e) => {
             println!(
                 "{}: failed to execute java process: {}",
@@ -103,7 +105,6 @@ pub async fn run_client(
                 status
             );
         }
-
         Err(e) => {
             println!(
                 "{}: error waiting for game process: {}",

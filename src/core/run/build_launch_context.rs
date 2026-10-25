@@ -6,6 +6,7 @@ use crate::core::run::load_version_data::VersionData;
 use crate::core::run::prepare_paths::LaunchPaths;
 use crate::core::run::resolve_environment::LaunchEnvironment;
 
+#[allow(clippy::too_many_arguments)]
 pub fn build_launch_context(
     version_id: &str,
     username: &str,
@@ -22,30 +23,15 @@ pub fn build_launch_context(
 
     let mut placeholders = HashMap::new();
 
-    placeholders.insert(
-        "auth_player_name".to_string(),
-        username.to_string(),
-    );
+    placeholders.insert("auth_player_name".to_string(), username.to_string());
 
-    placeholders.insert(
-        "auth_uuid".to_string(),
-        uuid.to_string(),
-    );
+    placeholders.insert("auth_uuid".to_string(), uuid.to_string());
 
-    placeholders.insert(
-        "auth_access_token".to_string(),
-        token.to_string(),
-    );
+    placeholders.insert("auth_access_token".to_string(), token.to_string());
 
-    placeholders.insert(
-        "user_type".to_string(),
-        user_type.to_string(),
-    );
+    placeholders.insert("user_type".to_string(), user_type.to_string());
 
-    placeholders.insert(
-        "version_name".to_string(),
-        version_id.to_string(),
-    );
+    placeholders.insert("version_name".to_string(), version_id.to_string());
 
     placeholders.insert(
         "version_type".to_string(),
@@ -82,17 +68,11 @@ pub fn build_launch_context(
         paths.assets.to_string_lossy().into_owned(),
     );
 
-    placeholders.insert(
-        "classpath".to_string(),
-        classpath.classpath.clone(),
-    );
+    placeholders.insert("classpath".to_string(), classpath.classpath.clone());
 
     placeholders.insert(
         "library_directory".to_string(),
-        version_data
-            .loader_libs_path
-            .to_string_lossy()
-            .into_owned(),
+        version_data.loader_libs_path.to_string_lossy().into_owned(),
     );
 
     placeholders.insert(
@@ -100,25 +80,13 @@ pub fn build_launch_context(
         classpath.separator.clone(),
     );
 
-    placeholders.insert(
-        "launcher_name".to_string(),
-        crate::NAME.to_string(),
-    );
+    placeholders.insert("launcher_name".to_string(), crate::NAME.to_string());
 
-    placeholders.insert(
-        "launcher_version".to_string(),
-        crate::VERSION.to_string(),
-    );
+    placeholders.insert("launcher_version".to_string(), crate::VERSION.to_string());
 
-    placeholders.insert(
-        "clientid".to_string(),
-        crate::CLIENT_ID.to_string(),
-    );
+    placeholders.insert("clientid".to_string(), crate::CLIENT_ID.to_string());
 
-    placeholders.insert(
-        "auth_xuid".to_string(),
-        xuid.to_string(),
-    );
+    placeholders.insert("auth_xuid".to_string(), xuid.to_string());
 
     LaunchContext {
         my_os: environment.my_os.clone(),

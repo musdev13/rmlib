@@ -10,7 +10,10 @@ pub async fn install(
 ) {
     let line = musutils::types::line::draw_colored('=', 35, musutils::color::Colors::Yellow);
 
-    println!("{}: soft installing base version for NeoForge...", musutils::types::Status::Task.as_colored_str());
+    println!(
+        "{}: soft installing base version for NeoForge...",
+        musutils::types::Status::Task.as_colored_str()
+    );
 
     let soft = true;
     let iclient = true;
@@ -36,14 +39,18 @@ pub async fn install(
     .await;
 
     println!("{}", line.clone());
-    println!("{}: base version for NeoForge successfully soft-installed!", musutils::types::Status::Ok.as_colored_str());
+    println!(
+        "{}: base version for NeoForge successfully soft-installed!",
+        musutils::types::Status::Ok.as_colored_str()
+    );
     println!("{}", line.clone());
 
-    let (_, _, _, versions_path, libs_path, _) = crate::core::version::install::resolve_installation_paths(
-        versions_path_option,
-        libs_path_option,
-        assets_path_option,
-    );
+    let (_, _, _, versions_path, libs_path, _) =
+        crate::core::version::install::resolve_installation_paths(
+            versions_path_option,
+            libs_path_option,
+            assets_path_option,
+        );
 
     println!("{}", line.clone());
 
@@ -52,9 +59,15 @@ pub async fn install(
         .join("neoforge")
         .join("temp");
 
-    println!("{}: creating NeoForge temp directory...", musutils::types::Status::Task.as_colored_str());
+    println!(
+        "{}: creating NeoForge temp directory...",
+        musutils::types::Status::Task.as_colored_str()
+    );
     musutils::fs::new_dir(temp_dir.clone());
-    println!("{}: temp directory created!", musutils::types::Status::Ok.as_colored_str());
+    println!(
+        "{}: temp directory created!",
+        musutils::types::Status::Ok.as_colored_str()
+    );
 
     println!("{}", line.clone());
 
@@ -84,7 +97,7 @@ pub async fn install(
     let installer_filename = format!("neoforge-{}-installer.jar", neoforge_version);
     let installer_path = temp_dir.join(&installer_filename);
 
-    if let Err(_) = musutils::fs::write(installer_path.clone(), installer_bytes) {
+    if musutils::fs::write(installer_path.clone(), installer_bytes).is_err() {
         println!(
             "{}: failed to save NeoForge installer to disk! Cleaning up...",
             musutils::types::Status::Err.as_colored_str()
@@ -100,17 +113,26 @@ pub async fn install(
 
     println!("{}", line.clone());
 
-    println!("{}: preparing fakemc folder...", musutils::types::Status::Task.as_colored_str());
+    println!(
+        "{}: preparing fakemc folder...",
+        musutils::types::Status::Task.as_colored_str()
+    );
 
     let fakemc_dir = temp_dir.join("fakemc");
 
-    println!("{}: creating fakemc directory...", musutils::types::Status::Inf.as_colored_str());
+    println!(
+        "{}: creating fakemc directory...",
+        musutils::types::Status::Inf.as_colored_str()
+    );
     musutils::fs::new_dir(fakemc_dir.clone());
 
     let profiles_json_path = fakemc_dir.join("launcher_profiles.json");
 
-    println!("{}: creating launcher profile json...", musutils::types::Status::Inf.as_colored_str());
-    if let Err(_) = musutils::fs::write(profiles_json_path, "{}") {
+    println!(
+        "{}: creating launcher profile json...",
+        musutils::types::Status::Inf.as_colored_str()
+    );
+    if musutils::fs::write(profiles_json_path, "{}").is_err() {
         println!(
             "{}: failed to write launcher_profiles.json! Cleaning up...",
             musutils::types::Status::Err.as_colored_str()
@@ -119,11 +141,17 @@ pub async fn install(
         return;
     }
 
-    println!("{}: fakemc folder prepared successfully!", musutils::types::Status::Ok.as_colored_str());
+    println!(
+        "{}: fakemc folder prepared successfully!",
+        musutils::types::Status::Ok.as_colored_str()
+    );
 
     println!("{}", line.clone());
 
-    println!("{}: running NeoForge installer...", musutils::types::Status::Task.as_colored_str());
+    println!(
+        "{}: running NeoForge installer...",
+        musutils::types::Status::Task.as_colored_str()
+    );
 
     let status = Command::new("java")
         .current_dir(&temp_dir)
@@ -152,13 +180,16 @@ pub async fn install(
 
     println!("{}", line.clone());
 
-    println!("{}: moving libraries to destination...", musutils::types::Status::Task.as_colored_str());
+    println!(
+        "{}: moving libraries to destination...",
+        musutils::types::Status::Task.as_colored_str()
+    );
     let source_libs = fakemc_dir.join("libraries");
     let target_libs = libs_path.join("modloaders").join("neoforge");
 
     musutils::fs::new_dir(target_libs.clone());
 
-    if let Err(_) = musutils::fs::copy_dir_all(source_libs, target_libs) {
+    if musutils::fs::copy_dir_all(source_libs, target_libs).is_err() {
         println!(
             "{}: failed to move NeoForge libraries! Cleaning up...",
             musutils::types::Status::Err.as_colored_str()
@@ -167,7 +198,10 @@ pub async fn install(
         return;
     }
 
-    println!("{}: moving version json...", musutils::types::Status::Task.as_colored_str());
+    println!(
+        "{}: moving version json...",
+        musutils::types::Status::Task.as_colored_str()
+    );
     let source_version_json = fakemc_dir
         .join("versions")
         .join(format!("neoforge-{}", neoforge_version))
@@ -183,7 +217,7 @@ pub async fn install(
 
     let target_version_json = target_version_dir.join(format!("{}.json", neoforge_version));
 
-    if let Err(_) = musutils::fs::copy(source_version_json, target_version_json) {
+    if musutils::fs::copy(source_version_json, target_version_json).is_err() {
         println!(
             "{}: failed to move NeoForge version json! Cleaning up...",
             musutils::types::Status::Err.as_colored_str()
@@ -192,10 +226,16 @@ pub async fn install(
         return;
     }
 
-    println!("{}: cleaning up temp directory...", musutils::types::Status::Task.as_colored_str());
+    println!(
+        "{}: cleaning up temp directory...",
+        musutils::types::Status::Task.as_colored_str()
+    );
     let _ = musutils::fs::remove_dir_all(&temp_dir);
 
     println!("{}", line.clone());
-    println!("{}: NeoForge installation completed successfully!", musutils::types::Status::Ok.as_colored_str());
+    println!(
+        "{}: NeoForge installation completed successfully!",
+        musutils::types::Status::Ok.as_colored_str()
+    );
     println!("{}", line.clone());
 }
