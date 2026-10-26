@@ -4,6 +4,25 @@ use std::path::Path;
 use crate::core::run::dto::{LaunchContext, ResolvedLibrary};
 use crate::core::run::{check_rules, get_library_group_artifact};
 
+fn arch_matches_classifier(classifier: &str, my_arch: &str) -> bool {
+    let c = classifier.to_ascii_lowercase();
+    let has_arm64 = c.contains("arm64") || c.contains("aarch64");
+    let has_arm32 = c.contains("arm32") || (c.contains("arm") && !has_arm64);
+    let has_x86 = c.contains("x86_64") || c.contains("amd64") || c.contains("64");
+    let has_32 = c.contains("x86") && !c.contains("x86_64")
+        || c.contains("32")
+        || c.contains("i386")
+        || c.contains("i686");
+
+    match my_arch {
+        "64" => !has_arm64 && !has_arm32 && !has_32,
+        "32" => !has_arm64 && !has_arm32 && !has_x86,
+        "arm64" => has_arm64,
+        "arm32" => has_arm32,
+        _ => true,
+    }
+}
+
 pub fn verify_libraries(
     version_json: &Value,
     libs_path: &Path,
@@ -11,7 +30,6 @@ pub fn verify_libraries(
 ) -> Vec<ResolvedLibrary> {
     let mut classpath_entries = Vec::new();
 
-    let os_str = context.my_os.as_str();
     let arch_str = context.my_arch.as_str();
 
     if let Some(libraries) = version_json.get("libraries").and_then(|l| l.as_array()) {
@@ -54,21 +72,6 @@ pub fn verify_libraries(
                 {
                     rel_paths.push(p.to_string());
                 }
-
-                if rel_paths.is_empty()
-                    && let Some(classifiers) =
-                        downloads.get("classifiers").and_then(|c| c.as_object())
-                {
-                    for (key, val) in classifiers {
-                        let key_matches_os =
-                            key.contains(os_str) || (os_str == "osx" && key.contains("macos"));
-
-                        if key_matches_os && let Some(p) = val.get("path").and_then(|v| v.as_str())
-                        {
-                            rel_paths.push(p.to_string());
-                        }
-                    }
-                }
             }
 
             if rel_paths.is_empty()
@@ -81,6 +84,13 @@ pub fn verify_libraries(
 
             for rel_path in rel_paths {
                 if rel_path.is_empty() {
+                    continue;
+                }
+
+                if let Some(classifier) = rel_path.rsplit('/').next()
+                    && let Some(stem) = classifier.strip_suffix(".jar")
+                    && !arch_matches_classifier(stem, &context.my_arch)
+                {
                     continue;
                 }
 
