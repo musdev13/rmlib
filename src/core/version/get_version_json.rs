@@ -2,7 +2,10 @@ use crate::core;
 
 pub async fn get_version_json(version_id: String) -> String {
     let url = core::version::get_version_json_url(version_id).await;
-    musutils::http::get_json_str(url)
-        .await
-        .expect(&format!("{}: failed to get version json string", musutils::types::Status::Err.as_colored_str()))
+    musutils::http::get_json_str(url).await.unwrap_or_else(|_| {
+        panic!(
+            "{}: failed to get version json string",
+            musutils::types::Status::Err.as_colored_str()
+        )
+    })
 }

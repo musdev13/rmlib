@@ -1,0 +1,75 @@
+name: CI
+
+on:
+  pull_request:
+    branches:
+      - dev
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  tests:
+    name: Rust tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout rmlib
+        uses: actions/checkout@v6
+        with:
+          path: rmlib
+
+      - name: Checkout musutils (dev)
+        uses: actions/checkout@v6
+        with:
+          repository: musdev13/musutils
+          ref: dev
+          path: musutils
+
+      - name: Setup Rust
+        uses: actions-rust-lang/setup-rust-toolchain@v2
+        with:
+          toolchain: stable
+          components: rustfmt, clippy
+
+      - name: Check formatting
+        working-directory: rmlib
+        run: make fmt-check
+
+      - name: Clippy (default + ffi, -D warnings)
+        working-directory: rmlib
+        run: |
+          make clippy
+          make clippy-ffi
+
+      - name: Tests (default + ffi)
+        working-directory: rmlib
+        run: |
+          make test
+          make test-ffi
+
+  docs:
+    name: Docs build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout rmlib
+        uses: actions/checkout@v6
+        with:
+          path: rmlib
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: rmlib/req.txt
+
+      - name: Install MkDocs dependencies
+        working-directory: rmlib
+        run: pip install -r req.txt
+
+      - name: Build documentation (strict)
+        working-directory: rmlib
+        run: mkdocs build --strict

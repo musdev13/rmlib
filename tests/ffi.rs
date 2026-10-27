@@ -1,0 +1,185 @@
+#![cfg(feature = "ffi")]
+
+use std::ffi::{CStr, CString};
+use std::os::raw::c_char;
+
+use rmlib::ffi::exports::{
+    rmlib_available_modules, rmlib_build_maven_path, rmlib_client_id, rmlib_client_token,
+    rmlib_name, rmlib_version, rmlib_version_sort_by_type, rmlib_version_strip_version,
+};
+use rmlib::ffi::{rmlib_last_error, rmlib_string_free};
+
+unsafe fn take_string(ptr: *mut c_char) -> Option<String> {
+    if ptr.is_null() {
+        return None;
+    }
+    let s = unsafe { CStr::from_ptr(ptr) }
+        .to_string_lossy()
+        .into_owned();
+    unsafe { rmlib_string_free(ptr) };
+    Some(s)
+}
+
+unsafe fn take_error() -> Option<String> {
+    let ptr = unsafe { rmlib_last_error() };
+    if ptr.is_null() {
+        return None;
+    }
+    let s = unsafe { CStr::from_ptr(ptr) }
+        .to_string_lossy()
+        .into_owned();
+    unsafe { rmlib_string_free(ptr) };
+    Some(s)
+}
+
+unsafe fn clear_error() {
+    let _ = unsafe { take_error() };
+}
+
+#[test]
+fn ffi_version_matches_crate_version() {
+    let s = unsafe { take_string(rmlib_version()) }.unwrap();
+    assert_eq!(s, rmlib::VERSION);
+}
+
+#[test]
+fn ffi_name_matches_crate_name() {
+    let s = unsafe { take_string(rmlib_name()) }.unwrap();
+    assert_eq!(s, rmlib::NAME);
+}
+
+#[test]
+fn ffi_client_id_matches_crate() {
+    let s = unsafe { take_string(rmlib_client_id()) }.unwrap();
+    assert_eq!(s, rmlib::CLIENT_ID);
+}
+
+#[test]
+fn ffi_client_token_matches_crate() {
+    let s = unsafe { take_string(rmlib_client_token()) }.unwrap();
+    assert_eq!(s, rmlib::CLIENT_TOKEN);
+}
+
+#[test]
+fn ffi_available_modules_is_valid_json() {
+    let s = unsafe { take_string(rmlib_available_modules()) }.unwrap();
+    let v: serde_json::Value = serde_json::from_str(&s).unwrap();
+    let arr = v.as_array().expect("expected JSON array");
+    assert!(arr.iter().any(|m| m["name"] == "core"));
+}
+
+#[test]
+fn ffi_build_maven_path_valid() {
+    let name = CString::new("net.minecraft:client:1.20.1").unwrap();
+    let s =
+        unsafe { take_string(rmlib_build_maven_path(name.as_ptr(), std::ptr::null())) }.unwrap();
+    assert_eq!(s, "net/minecraft/client/1.20.1/client-1.20.1.jar");
+}
+
+#[test]
+fn ffi_build_maven_path_with_classifier() {
+    let name = CString::new("net.minecraft:client:1.20.1").unwrap();
+    let classifier = CString::new("natives-linux").unwrap();
+    let s =
+        unsafe { take_string(rmlib_build_maven_path(name.as_ptr(), classifier.as_ptr())) }.unwrap();
+    assert_eq!(
+        s,
+        "net/minecraft/client/1.20.1/client-1.20.1-natives-linux.jar"
+    );
+}
+
+#[test]
+fn ffi_build_maven_path_invalid_returns_null_and_sets_error() {
+    unsafe { clear_error() };
+    let name = CString::new("bad").unwrap();
+    let ptr = unsafe { rmlib_build_maven_path(name.as_ptr(), std::ptr::null()) };
+    assert!(ptr.is_null());
+    let err = unsafe { take_error() }.expect("expected last_error to be set");
+    assert!(err.contains("invalid maven"));
+}
+
+#[test]
+fn ffi_last_error_is_one_shot() {
+    let name = CString::new("bad").unwrap();
+    let _ = unsafe { rmlib_build_maven_path(name.as_ptr(), std::ptr::null()) };
+    let first = unsafe { take_error() };
+    assert!(first.is_some());
+    let second = unsafe { take_error() };
+    assert!(second.is_none(), "last_error should be cleared after read");
+}
+
+#[test]
+fn ffi_sort_by_type_release() {
+    let input = r#"[{"id":"a","type":"release"},{"id":"b","type":"snapshot"}]"#;
+    let json = CString::new(input).unwrap();
+    let s = unsafe { take_string(rmlib_version_sort_by_type(json.as_ptr(), 0)) }.unwrap();
+    let v: serde_json::Value = serde_json::from_str(&s).unwrap();
+    let arr = v.as_array().unwrap();
+    assert_eq!(arr.len(), 1);
+    assert_eq!(arr[0]["id"], "a");
+}
+
+#[test]
+fn ffi_sort_by_type_invalid_type_returns_null() {
+    unsafe { clear_error() };
+    let input = CString::new("[]").unwrap();
+    let ptr = unsafe { rmlib_version_sort_by_type(input.as_ptr(), 42) };
+    assert!(ptr.is_null());
+    let err = unsafe { take_error() }.expect("expected error");
+    assert!(err.contains("invalid VersionType"));
+}
+
+#[test]
+fn ffi_sort_by_type_invalid_json_returns_null() {
+    unsafe { clear_error() };
+    let input = CString::new("not json").unwrap();
+    let ptr = unsafe { rmlib_version_sort_by_type(input.as_ptr(), 0) };
+    assert!(ptr.is_null());
+    let err = unsafe { take_error() }.expect("expected error");
+    assert!(err.contains("invalid json"));
+}
+
+#[test]
+fn ffi_strip_version_keeps_id() {
+    let input = r#"[{"id":"a","type":"release","url":"u"}]"#;
+    let json = CString::new(input).unwrap();
+    let s = unsafe {
+        take_string(rmlib_version_strip_version(
+            json.as_ptr(),
+            true,
+            false,
+            false,
+            false,
+            false,
+        ))
+    }
+    .unwrap();
+    let v: serde_json::Value = serde_json::from_str(&s).unwrap();
+    assert_eq!(v[0], serde_json::json!({"id": "a"}));
+}
+
+#[test]
+fn ffi_strip_version_keeps_all() {
+    let input = r#"[{"id":"a","type":"release","url":"u","releaseTime":"r","time":"t"}]"#;
+    let json = CString::new(input).unwrap();
+    let s = unsafe {
+        take_string(rmlib_version_strip_version(
+            json.as_ptr(),
+            true,
+            true,
+            true,
+            true,
+            true,
+        ))
+    }
+    .unwrap();
+    let v: serde_json::Value = serde_json::from_str(&s).unwrap();
+    assert_eq!(v[0]["id"], "a");
+    assert_eq!(v[0]["type"], "release");
+    assert_eq!(v[0]["url"], "u");
+}
+
+#[test]
+fn ffi_string_free_null_is_noop() {
+    unsafe { rmlib_string_free(std::ptr::null_mut()) };
+}

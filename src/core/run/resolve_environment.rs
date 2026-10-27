@@ -21,8 +21,5 @@ pub fn resolve_environment() -> LaunchEnvironment {
     }
     .to_string();
 
-    LaunchEnvironment {
-        my_os,
-        my_arch,
-    }
+    LaunchEnvironment { my_os, my_arch }
 }

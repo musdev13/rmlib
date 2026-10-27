@@ -1,5 +1,5 @@
 use std::collections::HashMap;
-use std::path::PathBuf;
+use std::path::Path;
 
 use serde_json::Value;
 
@@ -17,7 +17,7 @@ pub fn build_classpath(
     version_json: &Value,
     modloader_json: Option<&Value>,
     paths: &LaunchPaths,
-    loader_libs_path: &PathBuf,
+    loader_libs_path: &Path,
     environment: &LaunchEnvironment,
 ) -> ClasspathData {
     let mut raw_libs = Vec::new();

@@ -4,21 +4,11 @@ pub async fn install_patch(
     libs_path_option: Option<PathBuf>,
     is_json: bool,
 ) -> std::io::Result<()> {
-    let mut is_custom_libs_path = false;
-
-    let libs_path = musutils::fs::tilda_desir(
-        musutils::types::deoption(
-            libs_path_option,
-            || PathBuf::from(crate::core::config::get_libs_path()),
-            &mut is_custom_libs_path,
-        ),
+    let libs_path = musutils::fs::expand(
+        libs_path_option.unwrap_or_else(|| PathBuf::from(crate::core::config::get_libs_path())),
     );
 
-    let line = musutils::types::line::draw_colored(
-        '=',
-        35,
-        musutils::color::Colors::Yellow,
-    );
+    let line = musutils::types::line::draw_colored('=', 35, musutils::color::Colors::Yellow);
 
     musutils::log!(is_json, "{line}");
 
@@ -33,7 +23,8 @@ pub async fn install_patch(
     let json = musutils::http::get_github_json_str(
         "https://api.github.com/repos/yushijinhun/authlib-injector/releases".to_string(),
     )
-    .await?;
+    .await
+    .map_err(|e| std::io::Error::other(e.to_string()))?;
 
     let releases: serde_json::Value = serde_json::from_str(&json)
         .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?;
@@ -52,9 +43,7 @@ pub async fn install_patch(
     let download_url = assets
         .iter()
         .find(|asset| {
-            asset
-                .get("content_type")
-                .and_then(|value| value.as_str())
+            asset.get("content_type").and_then(|value| value.as_str())
                 == Some("application/java-archive")
         })
         .and_then(|asset| asset.get("browser_download_url"))
@@ -82,11 +71,9 @@ pub async fn install_patch(
         musutils::types::Status::Task.as_colored_str()
     );
 
-    musutils::http::download_to(
-        download_url.to_string(),
-        path,
-    )
-    .await?;
+    musutils::http::download_to(download_url.to_string(), path)
+        .await
+        .map_err(|e| std::io::Error::other(e.to_string()))?;
 
     musutils::log!(
         is_json,
