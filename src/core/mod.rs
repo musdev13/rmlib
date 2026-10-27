@@ -1,5 +1,4 @@
 pub mod config;
-pub mod modloaders;
 pub mod run;
 pub mod test;
 pub mod types;

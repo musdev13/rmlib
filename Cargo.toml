@@ -24,7 +24,9 @@ roxmltree = "=0.18.1"
 tokio = { version = "1", features = ["rt-multi-thread"], optional = true }
 
 [features]
-default = ["core", "ely"]
+default = ["core", "ely", "fabric", "neoforge"]
 core = []
 ely = ["core"]
+fabric = ["core"]
+neoforge = ["core"]
 ffi = ["dep:tokio"]

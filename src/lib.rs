@@ -13,7 +13,7 @@
 
 #[cfg(feature = "core")]
 pub mod core;
-#[cfg(feature = "ely")]
+#[cfg(any(feature = "ely", feature = "fabric", feature = "neoforge"))]
 pub mod extra;
 #[cfg(feature = "ffi")]
 mod ffi;
@@ -37,6 +37,12 @@ pub fn available_modules() -> Vec<ModuleInfo> {
 
     #[cfg(feature = "ely")]
     out.push(ModuleInfo { name: "ely" });
+
+    #[cfg(feature = "fabric")]
+    out.push(ModuleInfo { name: "fabric" });
+
+    #[cfg(feature = "neoforge")]
+    out.push(ModuleInfo { name: "neoforge" });
 
     out
 }
