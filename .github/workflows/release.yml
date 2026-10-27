@@ -1,0 +1,35 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Create release
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Parse tag
+        id: parse
+        run: |
+          tag="${GITHUB_REF_NAME}"
+          stripped="${tag#v}"
+          IFS='-' read -r rmlib_ver musutils_ver <<< "$stripped"
+          if ! [[ "$rmlib_ver" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] \
+             || ! [[ "$musutils_ver" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::tag '${tag}' must be of the form v<X.Y.Z>-<X.Y.Z>, e.g. v0.10.0-0.5.0"
+            exit 1
+          fi
+          title="v${rmlib_ver} (musutils: ${musutils_ver})"
+          echo "title=${title}" >> "$GITHUB_OUTPUT"
+
+      - name: Create GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: ${{ steps.parse.outputs.title }}
+          generate_release_notes: true
