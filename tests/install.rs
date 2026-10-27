@@ -45,14 +45,8 @@ fn prepare_version_files_creates_dirs_and_writes_json() {
     let assets = dir.join("assets");
     let body = r#"{"id":"1.20.1","mainClass":"Main"}"#;
 
-    let version_path = prepare_version_files(
-        &versions,
-        &libs,
-        &assets,
-        "1.20.1",
-        body,
-        "==========",
-    );
+    let version_path =
+        prepare_version_files(&versions, &libs, &assets, "1.20.1", body, "==========");
 
     assert_eq!(version_path, versions.join("1.20.1"));
     assert!(versions.is_dir());
@@ -118,8 +112,7 @@ fn resolve_installation_paths_mixed_flags() {
     let _guard = HomeGuard::new(home.path());
     let custom = home.join("custom_versions");
 
-    let (cv, cl, ca, _, _, _) =
-        resolve_installation_paths(Some(custom), None, None);
+    let (cv, cl, ca, _, _, _) = resolve_installation_paths(Some(custom), None, None);
     assert!(cv);
     assert!(!cl);
     assert!(!ca);
@@ -138,7 +131,11 @@ fn extract_native_libraries_extracts_os_specific_file() {
     extract_native_libraries(&libs);
 
     let extracted = libs.join("natives").join(&native_name);
-    assert!(extracted.exists(), "expected native {} to be extracted", extracted.display());
+    assert!(
+        extracted.exists(),
+        "expected native {} to be extracted",
+        extracted.display()
+    );
     assert_eq!(fs::read(&extracted).unwrap(), b"native-bytes");
 }
 
@@ -180,7 +177,11 @@ fn extract_native_libraries_ignores_non_native_jars() {
     let entries: Vec<_> = fs::read_dir(&natives)
         .map(|rd| rd.filter_map(|e| e.ok()).collect())
         .unwrap_or_default();
-    assert!(entries.is_empty(), "expected no natives, got {:?}", entries.len());
+    assert!(
+        entries.is_empty(),
+        "expected no natives, got {:?}",
+        entries.len()
+    );
 }
 
 #[test]

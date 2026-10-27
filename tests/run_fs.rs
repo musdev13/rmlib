@@ -67,8 +67,16 @@ fn prepare_paths_success() {
     .unwrap();
 
     assert_eq!(paths.versions, musutils_expand(&versions));
-    assert_eq!(paths.version_json, musutils_expand(&versions).join("1.20.1").join("1.20.1.json"));
-    assert_eq!(paths.client_jar, musutils_expand(&versions).join("1.20.1").join("1.20.1.jar"));
+    assert_eq!(
+        paths.version_json,
+        musutils_expand(&versions)
+            .join("1.20.1")
+            .join("1.20.1.json")
+    );
+    assert_eq!(
+        paths.client_jar,
+        musutils_expand(&versions).join("1.20.1").join("1.20.1.jar")
+    );
 }
 
 #[test]
@@ -85,7 +93,8 @@ fn prepare_paths_missing_json_err() {
         dir.join("native").to_str().unwrap(),
         dir.join("game").to_str().unwrap(),
     )
-    .err().unwrap();
+    .err()
+    .unwrap();
     assert!(err.contains("client json not found"));
 }
 
@@ -119,7 +128,11 @@ fn load_version_data_without_modloader() {
     let game = dir.join("game");
     let version_dir = versions.join("1.20.1");
     fs::create_dir_all(&version_dir).unwrap();
-    fs::write(version_dir.join("1.20.1.json"), minimal_version_json().to_string()).unwrap();
+    fs::write(
+        version_dir.join("1.20.1.json"),
+        minimal_version_json().to_string(),
+    )
+    .unwrap();
 
     let paths = prepare_paths(
         "1.20.1",
@@ -141,10 +154,13 @@ fn load_version_data_without_modloader() {
 #[test]
 fn load_version_data_asset_index_legacy_fallback() {
     let dir = TempDir::new("lvd_legacy");
-    let paths = make_paths_with_json(&dir, json!({
-        "id": "1.20.1",
-        "mainClass": "Main"
-    }));
+    let paths = make_paths_with_json(
+        &dir,
+        json!({
+            "id": "1.20.1",
+            "mainClass": "Main"
+        }),
+    );
 
     let data = load_version_data("1.20.1", None, None, &paths, false).unwrap();
     assert_eq!(data.asset_index_name, "legacy");
@@ -155,7 +171,9 @@ fn load_version_data_missing_main_class_err() {
     let dir = TempDir::new("lvd_nomain");
     let paths = make_paths_with_json(&dir, json!({"id": "1.20.1"}));
 
-    let err = load_version_data("1.20.1", None, None, &paths, false).err().unwrap();
+    let err = load_version_data("1.20.1", None, None, &paths, false)
+        .err()
+        .unwrap();
     assert!(err.contains("mainClass"));
 }
 
@@ -165,7 +183,11 @@ fn load_version_data_fabric_profile_present() {
     let paths = make_paths_with_json(&dir, minimal_version_json());
 
     let fabric_json = json!({"mainClass": "net.fabricmc.loader.impl.launch.knot.KnotClient"});
-    let fabric_dir = paths.versions.join("modloaders").join("fabric").join("1.20.1");
+    let fabric_dir = paths
+        .versions
+        .join("modloaders")
+        .join("fabric")
+        .join("1.20.1");
     fs::create_dir_all(&fabric_dir).unwrap();
     fs::write(
         fabric_dir.join("0.15.0.json"),
@@ -231,7 +253,9 @@ fn load_version_data_missing_version_json_err() {
     let paths = make_paths_with_json(&dir, minimal_version_json());
     fs::remove_file(&paths.version_json).unwrap();
 
-    let err = load_version_data("1.20.1", None, None, &paths, false).err().unwrap();
+    let err = load_version_data("1.20.1", None, None, &paths, false)
+        .err()
+        .unwrap();
     assert!(err.contains("failed to read client json"));
 }
 
@@ -382,24 +406,51 @@ fn build_launch_context_placeholders() {
     };
 
     let context = build_launch_context(
-        "1.20.1", "Steve", "uuid-123", "xuid-1", "token-abc", false, &data, &paths, &env(), &cp,
+        "1.20.1",
+        "Steve",
+        "uuid-123",
+        "xuid-1",
+        "token-abc",
+        false,
+        &data,
+        &paths,
+        &env(),
+        &cp,
     );
 
     assert_eq!(context.my_os, "linux");
     assert_eq!(context.my_arch, "64");
-    assert_eq!(context.placeholders.get("auth_player_name").unwrap(), "Steve");
+    assert_eq!(
+        context.placeholders.get("auth_player_name").unwrap(),
+        "Steve"
+    );
     assert_eq!(context.placeholders.get("auth_uuid").unwrap(), "uuid-123");
-    assert_eq!(context.placeholders.get("auth_access_token").unwrap(), "token-abc");
+    assert_eq!(
+        context.placeholders.get("auth_access_token").unwrap(),
+        "token-abc"
+    );
     assert_eq!(context.placeholders.get("auth_xuid").unwrap(), "xuid-1");
     assert_eq!(context.placeholders.get("user_type").unwrap(), "msa");
     assert_eq!(context.placeholders.get("version_name").unwrap(), "1.20.1");
     assert_eq!(context.placeholders.get("version_type").unwrap(), "release");
     assert_eq!(context.placeholders.get("assets_index_name").unwrap(), "5");
     assert_eq!(context.placeholders.get("classpath").unwrap(), "a:b");
-    assert_eq!(context.placeholders.get("classpath_separator").unwrap(), ":");
-    assert_eq!(context.placeholders.get("launcher_name").unwrap(), rmlib::NAME);
-    assert_eq!(context.placeholders.get("launcher_version").unwrap(), rmlib::VERSION);
-    assert_eq!(context.placeholders.get("clientid").unwrap(), rmlib::CLIENT_ID);
+    assert_eq!(
+        context.placeholders.get("classpath_separator").unwrap(),
+        ":"
+    );
+    assert_eq!(
+        context.placeholders.get("launcher_name").unwrap(),
+        rmlib::NAME
+    );
+    assert_eq!(
+        context.placeholders.get("launcher_version").unwrap(),
+        rmlib::VERSION
+    );
+    assert_eq!(
+        context.placeholders.get("clientid").unwrap(),
+        rmlib::CLIENT_ID
+    );
 }
 
 #[test]
@@ -426,7 +477,16 @@ fn build_launch_context_user_type_ely_is_mojang() {
         separator: ":".to_string(),
     };
     let context = build_launch_context(
-        "1.20.1", "Steve", "u", "x", "t", true, &data, &paths, &env(), &cp,
+        "1.20.1",
+        "Steve",
+        "u",
+        "x",
+        "t",
+        true,
+        &data,
+        &paths,
+        &env(),
+        &cp,
     );
     assert_eq!(context.placeholders.get("user_type").unwrap(), "mojang");
 }
@@ -455,11 +515,30 @@ fn build_arguments_includes_ram_and_library_path() {
         separator: ":".to_string(),
     };
     let context = build_launch_context(
-        "1.20.1", "Steve", "u", "x", "t", false, &data, &paths, &env(), &cp,
+        "1.20.1",
+        "Steve",
+        "u",
+        "x",
+        "t",
+        false,
+        &data,
+        &paths,
+        &env(),
+        &cp,
     );
 
     let args = build_arguments(
-        "2G", false, false, None, &paths, &data, &context, &cp, &[], &[], false,
+        "2G",
+        false,
+        false,
+        None,
+        &paths,
+        &data,
+        &context,
+        &cp,
+        &[],
+        &[],
+        false,
     );
 
     assert!(args.jvm_args.contains(&"-Xmx2G".to_string()));
@@ -498,7 +577,16 @@ fn build_arguments_custom_jvm_and_game_args_appended() {
         separator: ":".to_string(),
     };
     let context = build_launch_context(
-        "1.20.1", "S", "u", "x", "t", false, &data, &paths, &env(), &cp,
+        "1.20.1",
+        "S",
+        "u",
+        "x",
+        "t",
+        false,
+        &data,
+        &paths,
+        &env(),
+        &cp,
     );
 
     let args = build_arguments(
@@ -542,11 +630,30 @@ fn build_arguments_minecraft_arguments_field_used_for_old_versions() {
         separator: ":".to_string(),
     };
     let context = build_launch_context(
-        "1.20.1", "Steve", "u", "x", "t", false, &data, &paths, &env(), &cp,
+        "1.20.1",
+        "Steve",
+        "u",
+        "x",
+        "t",
+        false,
+        &data,
+        &paths,
+        &env(),
+        &cp,
     );
 
     let args = build_arguments(
-        "2G", false, false, None, &paths, &data, &context, &cp, &[], &[], false,
+        "2G",
+        false,
+        false,
+        None,
+        &paths,
+        &data,
+        &context,
+        &cp,
+        &[],
+        &[],
+        false,
     );
     assert!(args.game_args.contains(&"--username".to_string()));
     assert!(args.game_args.contains(&"${auth_player_name}".to_string()));
@@ -582,11 +689,30 @@ fn build_arguments_ely_adds_javaagent_when_jar_exists() {
         separator: ":".to_string(),
     };
     let context = build_launch_context(
-        "1.20.1", "S", "u", "x", "t", true, &data, &paths, &env(), &cp,
+        "1.20.1",
+        "S",
+        "u",
+        "x",
+        "t",
+        true,
+        &data,
+        &paths,
+        &env(),
+        &cp,
     );
 
     let args = build_arguments(
-        "2G", true, false, None, &paths, &data, &context, &cp, &[], &[], false,
+        "2G",
+        true,
+        false,
+        None,
+        &paths,
+        &data,
+        &context,
+        &cp,
+        &[],
+        &[],
+        false,
     );
     assert!(
         args.jvm_args
@@ -619,11 +745,30 @@ fn build_arguments_ely_betafix_uses_proxy_port() {
         separator: ":".to_string(),
     };
     let context = build_launch_context(
-        "1.20.1", "S", "u", "x", "t", true, &data, &paths, &env(), &cp,
+        "1.20.1",
+        "S",
+        "u",
+        "x",
+        "t",
+        true,
+        &data,
+        &paths,
+        &env(),
+        &cp,
     );
 
     let args = build_arguments(
-        "2G", true, true, None, &paths, &data, &context, &cp, &[], &[], false,
+        "2G",
+        true,
+        true,
+        None,
+        &paths,
+        &data,
+        &context,
+        &cp,
+        &[],
+        &[],
+        false,
     );
     assert!(
         args.jvm_args
@@ -657,11 +802,30 @@ fn build_arguments_betafix_without_ely() {
         separator: ":".to_string(),
     };
     let context = build_launch_context(
-        "1.20.1", "S", "u", "x", "t", false, &data, &paths, &env(), &cp,
+        "1.20.1",
+        "S",
+        "u",
+        "x",
+        "t",
+        false,
+        &data,
+        &paths,
+        &env(),
+        &cp,
     );
 
     let args = build_arguments(
-        "2G", false, true, None, &paths, &data, &context, &cp, &[], &[], false,
+        "2G",
+        false,
+        true,
+        None,
+        &paths,
+        &data,
+        &context,
+        &cp,
+        &[],
+        &[],
+        false,
     );
     assert!(
         args.jvm_args

@@ -13,7 +13,9 @@ unsafe fn take_string(ptr: *mut c_char) -> Option<String> {
     if ptr.is_null() {
         return None;
     }
-    let s = unsafe { CStr::from_ptr(ptr) }.to_string_lossy().into_owned();
+    let s = unsafe { CStr::from_ptr(ptr) }
+        .to_string_lossy()
+        .into_owned();
     unsafe { rmlib_string_free(ptr) };
     Some(s)
 }
@@ -23,7 +25,9 @@ unsafe fn take_error() -> Option<String> {
     if ptr.is_null() {
         return None;
     }
-    let s = unsafe { CStr::from_ptr(ptr) }.to_string_lossy().into_owned();
+    let s = unsafe { CStr::from_ptr(ptr) }
+        .to_string_lossy()
+        .into_owned();
     unsafe { rmlib_string_free(ptr) };
     Some(s)
 }
@@ -67,8 +71,8 @@ fn ffi_available_modules_is_valid_json() {
 #[test]
 fn ffi_build_maven_path_valid() {
     let name = CString::new("net.minecraft:client:1.20.1").unwrap();
-    let s = unsafe { take_string(rmlib_build_maven_path(name.as_ptr(), std::ptr::null())) }
-        .unwrap();
+    let s =
+        unsafe { take_string(rmlib_build_maven_path(name.as_ptr(), std::ptr::null())) }.unwrap();
     assert_eq!(s, "net/minecraft/client/1.20.1/client-1.20.1.jar");
 }
 
@@ -76,10 +80,8 @@ fn ffi_build_maven_path_valid() {
 fn ffi_build_maven_path_with_classifier() {
     let name = CString::new("net.minecraft:client:1.20.1").unwrap();
     let classifier = CString::new("natives-linux").unwrap();
-    let s = unsafe {
-        take_string(rmlib_build_maven_path(name.as_ptr(), classifier.as_ptr()))
-    }
-    .unwrap();
+    let s =
+        unsafe { take_string(rmlib_build_maven_path(name.as_ptr(), classifier.as_ptr())) }.unwrap();
     assert_eq!(
         s,
         "net/minecraft/client/1.20.1/client-1.20.1-natives-linux.jar"

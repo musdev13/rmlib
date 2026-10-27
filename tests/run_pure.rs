@@ -4,8 +4,8 @@ use std::collections::HashMap;
 
 use rmlib::core::run::dto::LaunchContext;
 use rmlib::core::run::{
-    assemble_argv, assemble_command, check_rules, get_library_group_artifact,
-    parse_argument_list, replace_placeholders, resolve_environment,
+    assemble_argv, assemble_command, check_rules, get_library_group_artifact, parse_argument_list,
+    replace_placeholders, resolve_environment,
 };
 use serde_json::json;
 
@@ -236,7 +236,10 @@ fn resolve_environment_matches_target_arch() {
 fn assemble_argv_has_java_first_and_main_class() {
     let context = ctx_with_placeholders(&[("auth_player_name", "Steve")]);
     let args = rmlib::core::run::LaunchArguments {
-        jvm_args: vec!["-Xmx2G".to_string(), "-Dfoo=${auth_player_name}".to_string()],
+        jvm_args: vec![
+            "-Xmx2G".to_string(),
+            "-Dfoo=${auth_player_name}".to_string(),
+        ],
         game_args: vec!["--username".to_string(), "${auth_player_name}".to_string()],
     };
     let argv = assemble_argv("net.minecraft.client.main.Main", args, &context);

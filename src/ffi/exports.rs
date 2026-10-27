@@ -1,3 +1,5 @@
+#![allow(clippy::missing_safety_doc)]
+
 use std::ffi::c_void;
 use std::os::raw::c_char;
 use std::panic::AssertUnwindSafe;
@@ -207,8 +209,7 @@ pub unsafe extern "C" fn rmlib_version_sort_by_type(
 ) -> *mut c_char {
     catch_cstr(|| {
         let s = unsafe { cstr_to_string(json) }?;
-        let v: Vec<Value> =
-            serde_json::from_str(&s).map_err(|e| format!("invalid json: {e}"))?;
+        let v: Vec<Value> = serde_json::from_str(&s).map_err(|e| format!("invalid json: {e}"))?;
         let vt = int_to_version_type(version_type)?;
         let res = crate::core::version::sort_by_type(&v, vt);
         json_out(&res)
@@ -227,8 +228,7 @@ pub unsafe extern "C" fn rmlib_version_strip_version(
 ) -> *mut c_char {
     catch_cstr(|| {
         let s = unsafe { cstr_to_string(json) }?;
-        let v: Vec<Value> =
-            serde_json::from_str(&s).map_err(|e| format!("invalid json: {e}"))?;
+        let v: Vec<Value> = serde_json::from_str(&s).map_err(|e| format!("invalid json: {e}"))?;
         let res = crate::core::version::strip_version(
             &v,
             keep_id,
@@ -297,8 +297,7 @@ pub unsafe extern "C" fn rmlib_fabric_install(opts_json: *const c_char) -> i32 {
     catch_i32(|| {
         let v = parse_json_arg(opts_json)?;
         let version_id = get_str_field(&v, "version_id").ok_or("missing version_id")?;
-        let fabric_version =
-            get_str_field(&v, "fabric_version").ok_or("missing fabric_version")?;
+        let fabric_version = get_str_field(&v, "fabric_version").ok_or("missing fabric_version")?;
         let versions_path_option = get_opt_pathbuf(&v, "versions_path");
         let libs_path_option = get_opt_pathbuf(&v, "libs_path");
         let assets_path_option = get_opt_pathbuf(&v, "assets_path");
@@ -458,8 +457,7 @@ pub unsafe extern "C" fn rmlib_build_argv(opts_json: *const c_char) -> *mut c_ch
             &o.custom_jvm_args,
             &o.custom_game_args,
             o.logs,
-        )
-        .map_err(|e| e)?;
+        )?;
         json_out(&argv)
     })
 }
@@ -489,8 +487,7 @@ pub unsafe extern "C" fn rmlib_build_command(opts_json: *const c_char) -> *mut c
             &o.custom_jvm_args,
             &o.custom_game_args,
             o.logs,
-        )
-        .map_err(|e| e)?;
+        )?;
         Ok(string_to_c(s))
     })
 }
@@ -504,8 +501,7 @@ pub unsafe extern "C" fn rmlib_ely_login(
     catch_cstr(|| {
         let user = unsafe { cstr_to_string(username) }?;
         let pass = unsafe { cstr_to_string(password) }?;
-        let res = block_on(crate::extra::ely::login(user, pass))
-            .map_err(|e| e.to_string())?;
+        let res = block_on(crate::extra::ely::login(user, pass)).map_err(|e| e.to_string())?;
         json_out(&res)
     })
 }
