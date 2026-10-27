@@ -9,6 +9,9 @@ repository = "https://github.com/musdev13/rmlib"
 keywords = ["minecraft", "launcher", "game"]
 categories = ["game-engines"]
 
+[lib]
+crate-type = ["rlib", "cdylib"]
+
 [dependencies]
 serde_json = "1.0.154"
 serde = { version = "1.0", features = ["derive"] }
@@ -18,8 +21,10 @@ zip = "9.1"
 sha1 = "0.11.0"
 reqwest = { version = "0.13.5", features = ["blocking","json"] }
 roxmltree = "=0.18.1"
+tokio = { version = "1", features = ["rt-multi-thread"], optional = true }
 
 [features]
 default = ["core", "ely"]
 core = []
 ely = ["core"]
+ffi = ["dep:tokio"]

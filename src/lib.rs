@@ -15,6 +15,8 @@
 pub mod core;
 #[cfg(feature = "ely")]
 pub mod extra;
+#[cfg(feature = "ffi")]
+mod ffi;
 
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");
 pub const NAME: &str = env!("CARGO_PKG_NAME");
