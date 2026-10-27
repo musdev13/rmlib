@@ -16,7 +16,7 @@ pub mod core;
 #[cfg(any(feature = "ely", feature = "fabric", feature = "neoforge"))]
 pub mod extra;
 #[cfg(feature = "ffi")]
-mod ffi;
+pub mod ffi;
 
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");
 pub const NAME: &str = env!("CARGO_PKG_NAME");

@@ -23,6 +23,12 @@ reqwest = { version = "0.13.5", features = ["blocking","json"] }
 roxmltree = "=0.18.1"
 tokio = { version = "1", features = ["rt-multi-thread"], optional = true }
 
+[dev-dependencies]
+tokio = { version = "1", features = ["rt", "macros"] }
+serde_json = "1.0.154"
+zip = "9.1"
+musutils = { path = "../musutils", features = ["fs-v2", "http-v2", "os-v2", "types-v2", "color-v2"] }
+
 [features]
 default = ["core", "ely", "fabric", "neoforge"]
 core = []
