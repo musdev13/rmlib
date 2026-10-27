@@ -1,0 +1,59 @@
+site_name: rmlib
+site_description: Rust Minecraft Launcher library
+
+exclude_docs: |
+  README.md
+
+plugins:
+  - search
+
+theme:
+  name: material
+
+  features:
+    - navigation.footer
+    - navigation.top
+    - navigation.sections
+    - search.suggest
+    - search.highlight
+    - content.code.copy
+
+  palette:
+    - scheme: slate
+      primary: black
+      accent: blue
+
+extra_css:
+  - assets/extra.css
+
+nav:
+  - Home: index.md
+  - Getting Started:
+      - Installation: pages/getting-started/installation.md
+      - Features: pages/getting-started/features.md
+  - Core API: pages/lib.md
+  - Core:
+      - Config: pages/core/config.md
+      - Types: pages/core/types.md
+      - Version:
+          - Overview: pages/core/version.md
+          - Installation: pages/core/version-install.md
+      - Run:
+          - Paths: pages/core/run/paths.md
+          - Classpath: pages/core/run/classpath.md
+          - Arguments: pages/core/run/arguments.md
+          - Command: pages/core/run/command.md
+          - DTO: pages/core/run/dto.md
+  - Extra:
+      - Ely.by: pages/extra/ely.md
+      - Fabric: pages/extra/fabric.md
+      - NeoForge: pages/extra/neoforge.md
+  - FFI:
+      - Overview: pages/ffi/index.md
+      - Library Info: pages/ffi/lib.md
+      - Errors and Strings: pages/ffi/error.md
+      - Config: pages/ffi/config.md
+      - Version: pages/ffi/version.md
+      - Installation: pages/ffi/install.md
+      - Run: pages/ffi/run.md
+      - Ely.by: pages/ffi/ely.md
