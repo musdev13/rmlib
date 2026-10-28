@@ -555,3 +555,44 @@ pub unsafe extern "C" fn rmlib_proxy_guard_free(ptr: *mut c_void) {
         }
     }
 }
+
+#[cfg(feature = "core")]
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn rmlib_ms_auth_login() -> *mut c_char {
+    catch_cstr(|| {
+        let tokens = block_on(crate::core::auth::login()).map_err(|e| e.to_string())?;
+        json_out(&tokens)
+    })
+}
+
+#[cfg(feature = "core")]
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn rmlib_ms_auth_refresh() -> *mut c_char {
+    catch_cstr(|| {
+        let saved = crate::core::auth::load_tokens().map_err(|e| e.to_string())?;
+        let refresh_token = saved
+            .ok_or_else(|| "no saved ms tokens; run rmlib_ms_auth_login first".to_string())?
+            .refresh_token;
+        let tokens =
+            block_on(crate::core::auth::refresh(&refresh_token)).map_err(|e| e.to_string())?;
+        json_out(&tokens)
+    })
+}
+
+#[cfg(feature = "core")]
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn rmlib_ms_auth_get_data() -> *mut c_char {
+    catch_cstr(|| {
+        let profile = block_on(crate::core::auth::get_data()).map_err(|e| e.to_string())?;
+        json_out(&profile)
+    })
+}
+
+#[cfg(feature = "core")]
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn rmlib_ms_auth_clear() -> i32 {
+    catch_i32(|| {
+        crate::core::auth::clear_tokens().map_err(|e| e.to_string())?;
+        Ok(())
+    })
+}

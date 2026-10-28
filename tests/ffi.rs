@@ -8,8 +8,8 @@ use std::os::raw::c_char;
 use common::{HomeGuard, TempDir};
 use rmlib::ffi::exports::{
     rmlib_available_modules, rmlib_build_maven_path, rmlib_client_id, rmlib_client_token,
-    rmlib_get_auth_path, rmlib_name, rmlib_paths_load, rmlib_version, rmlib_version_sort_by_type,
-    rmlib_version_strip_version,
+    rmlib_get_auth_path, rmlib_ms_auth_clear, rmlib_ms_auth_refresh, rmlib_name, rmlib_paths_load,
+    rmlib_version, rmlib_version_sort_by_type, rmlib_version_strip_version,
 };
 use rmlib::ffi::{rmlib_last_error, rmlib_string_free};
 
@@ -206,4 +206,27 @@ fn ffi_paths_load_includes_auth() {
     let v: serde_json::Value = serde_json::from_str(&s).unwrap();
     assert_eq!(v["auth"], "~/rml/auth");
     assert_eq!(v["versions"], "~/rml/versions");
+}
+
+#[test]
+fn ffi_ms_auth_clear_ok() {
+    let home = TempDir::new("ffi_ms_clear");
+    let _guard = HomeGuard::new(home.path());
+
+    assert_eq!(unsafe { rmlib_ms_auth_clear() }, 0);
+}
+
+#[test]
+fn ffi_ms_auth_refresh_without_tokens_errors() {
+    let home = TempDir::new("ffi_ms_refresh_no_tokens");
+    let _guard = HomeGuard::new(home.path());
+
+    unsafe { clear_error() };
+    let ptr = unsafe { rmlib_ms_auth_refresh() };
+    assert!(ptr.is_null(), "expected NULL without saved tokens");
+    let err = unsafe { take_error() }.expect("last_error should be set");
+    assert!(
+        err.contains("no saved ms tokens"),
+        "unexpected error: {err}"
+    );
 }

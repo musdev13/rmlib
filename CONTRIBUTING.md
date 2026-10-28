@@ -120,6 +120,7 @@ Makefile                # make test / lint / check / docs-check / build-ffi / di
     | Change | Docs page |
     |---|---|
     | Crate-root items (`VERSION`, `NAME`, `available_modules`, …) | `docs/pages/lib.md` |
+    | `core::auth` | `docs/pages/core/auth.md` |
     | `core::config` | `docs/pages/core/config.md` |
     | `core::types` | `docs/pages/core/types.md` |
     | `core::version` | `docs/pages/core/version.md` |
@@ -133,7 +134,7 @@ Makefile                # make test / lint / check / docs-check / build-ffi / di
     | `extra::fabric` | `docs/pages/extra/fabric.md` |
     | `extra::neoforge` | `docs/pages/extra/neoforge.md` |
     | FFI overview / conventions | `docs/pages/ffi/index.md` |
-    | FFI exports by area | `docs/pages/ffi/{lib,error,config,version,install,run,ely}.md` |
+    | FFI exports by area | `docs/pages/ffi/{lib,error,auth,config,version,install,run,ely}.md` |
 
     A new `extra` area also needs: a new page under `docs/pages/extra/`, a new entry in the table in `docs/pages/extra/` (see `index`-like grouping on the relevant page), the new feature listed in `docs/pages/getting-started/features.md`, and a nav entry in `mkdocs.yml`.
 
@@ -341,6 +342,7 @@ Makefile                # make test / lint / check / docs-check / build-ffi / di
     | Изменение | Страница документации |
     |---|---|
     | Элементы на корне крейта (`VERSION`, `NAME`, `available_modules`, …) | `docs/pages/lib.md` |
+    | `core::auth` | `docs/pages/core/auth.md` |
     | `core::config` | `docs/pages/core/config.md` |
     | `core::types` | `docs/pages/core/types.md` |
     | `core::version` | `docs/pages/core/version.md` |
@@ -354,7 +356,7 @@ Makefile                # make test / lint / check / docs-check / build-ffi / di
     | `extra::fabric` | `docs/pages/extra/fabric.md` |
     | `extra::neoforge` | `docs/pages/extra/neoforge.md` |
     | Обзор FFI / конвенции | `docs/pages/ffi/index.md` |
-    | FFI-экспорты по областям | `docs/pages/ffi/{lib,error,config,version,install,run,ely}.md` |
+    | FFI-экспорты по областям | `docs/pages/ffi/{lib,error,auth,config,version,install,run,ely}.md` |
 
     Новая область `extra` также требует: новую страницу в `docs/pages/extra/`, запись в списке областей на соответствующих страницах, новую фичу в `docs/pages/getting-started/features.md` и запись в `nav:` файла `mkdocs.yml`.
 
