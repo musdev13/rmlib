@@ -407,6 +407,7 @@ pub unsafe extern "C" fn rmlib_run_client(opts_json: *const c_char) -> i32 {
         let v = parse_json_arg(opts_json)?;
         let o = parse_run_options(&v)?;
         let spawn_path = get_str_field(&v, "spawn_path").unwrap_or_default();
+        let java_path = get_str_field(&v, "java_path");
 
         block_on(crate::core::run::run_client(
             &o.version_id,
@@ -425,6 +426,7 @@ pub unsafe extern "C" fn rmlib_run_client(opts_json: *const c_char) -> i32 {
             &o.native_path,
             &o.game_path,
             &spawn_path,
+            java_path.as_deref(),
             &o.custom_jvm_args,
             &o.custom_game_args,
         ));

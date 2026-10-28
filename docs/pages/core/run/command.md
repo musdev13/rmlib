@@ -40,7 +40,7 @@ use rmlib::core::run::{build_argv, build_command, run_client};
 | 17 | `custom_game_args` | `&[String]` | Extra game args appended at the end. |
 | 18 | `logs` | `bool` | Only used by `build_argv` / `build_command`: enable extra logging during assembly. |
 
-`run_client` takes the same 18 parameters **minus** `logs`, and adds `spawn_path` (see below).
+`run_client` takes the same 18 parameters **minus** `logs`, and adds `spawn_path` and `java_path` (see below).
 
 ## `build_argv`
 
@@ -187,12 +187,15 @@ pub async fn run_client(
     native_path: &str,
     game_path: &str,
     spawn_path: &str,
+    java_path: Option<&str>,
     custom_jvm_args: &[String],
     custom_game_args: &[String],
 )
 ```
 
-Assembles the command (exactly as `build_argv` would), then **spawns `java` from `PATH`** and waits for it to exit.
+Assembles the command (exactly as `build_argv` would), then spawns a Java executable and waits for it to exit.
+
+By default it uses `java` from `PATH`; pass `java_path: Some("/path/to/java")` to launch with a custom JDK. An empty string is treated the same as `None` (falls back to `PATH`).
 
 ### Parameters
 
@@ -201,6 +204,7 @@ Same 18 as `build_argv`, minus `logs`, plus:
 | Parameter | Meaning |
 |---|---|
 | `spawn_path` | The working directory for the spawned `java` process. Usually the same as `game_path`, but the launcher's CLI lets you set it separately. `~` and `..` are handled by `musutils::fs::expand`. |
+| `java_path` | Optional path to a Java executable (e.g. `/usr/lib/jvm/temurin-21/bin/java`). When `None` (or an empty string), `java` from `PATH` is used — the same behaviour as before. |
 
 ### Behaviour
 
@@ -209,13 +213,14 @@ Same 18 as `build_argv`, minus `logs`, plus:
 3. If the argv is empty, prints `Status::Err: empty command` and returns.
 4. Resolves `spawn_path` (tilde-expanded).
 5. Prints `Status::Inf: spawn dir - <path>`.
-6. Prints `Status::Task: spawning java process...`.
-7. Spawns `Command::new(&argv[0]).args(&argv[1..]).current_dir(spawn_path)`.
+6. Resolves the Java executable: `java_path` if it is `Some` and non-empty, otherwise `argv[0]` (`"java"`).
+7. Prints `Status::Task: spawning java process...`.
+8. Spawns `Command::new(java_executable).args(&argv[1..]).current_dir(spawn_path)`.
    - On spawn failure, prints `Status::Err: failed to execute java process: <e>` and returns.
-8. Prints `Status::Ok: instance started successfully! Press Ctrl+C to exit.`.
-9. Calls `child.wait()`.
-   - On success, prints `Status::Ok: game exited with status: <status>`.
-   - On error, prints `Status::Err: error waiting for game process: <e>`.
+9. Prints `Status::Ok: instance started successfully! Press Ctrl+C to exit.`.
+10. Calls `child.wait()`.
+    - On success, prints `Status::Ok: game exited with status: <status>`.
+    - On error, prints `Status::Err: error waiting for game process: <e>`.
 
 ### Returns
 
@@ -233,6 +238,7 @@ let libs = config::get_libs_path();
 let natives = format!("{libs}/natives");
 let game = "~/.minecraft";
 
+// Use the system `java` from PATH.
 run_client(
     "1.20.1",
     None, None,
@@ -243,6 +249,23 @@ run_client(
     "token",
     false, false,
     &versions, &assets, &libs, &natives, game, game,
+    None,
+    &[],
+    &[],
+).await;
+
+// Or use a specific JDK.
+run_client(
+    "1.20.1",
+    None, None,
+    "4G",
+    "Steve",
+    "00000000-0000-0000-0000-000000000000",
+    "xuid",
+    "token",
+    false, false,
+    &versions, &assets, &libs, &natives, game, game,
+    Some("/usr/lib/jvm/temurin-21/bin/java"),
     &[],
     &[],
 ).await;
