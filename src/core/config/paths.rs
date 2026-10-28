@@ -5,22 +5,26 @@ use serde_json::{Value, json};
 
 use musutils::fs::config::{Config, ConfigError};
 
+const DEFAULT_AUTH_PATH: &str = "~/rml/auth";
+
 pub static DEFAULT_PATHS_CONFIG: LazyLock<Value> = LazyLock::new(|| {
     json!({
         "versions_path": "~/rml/versions",
         "assets_path": "~/rml/assets",
-        "libs_path": "~/rml/libs"
+        "libs_path": "~/rml/libs",
+        "auth_path": DEFAULT_AUTH_PATH
     })
 });
 
-const APP_NAME: &str = "rml";
-const FILE_NAME: &str = "paths.json";
+pub(crate) const APP_NAME: &str = "rml";
+pub(crate) const FILE_NAME: &str = "paths.json";
 
 #[derive(Debug, Clone)]
 pub struct Paths {
     pub versions: String,
     pub libs: String,
     pub assets: String,
+    pub auth: String,
 }
 
 impl Paths {
@@ -28,10 +32,16 @@ impl Paths {
         let default =
             serde_json::to_string_pretty(&*DEFAULT_PATHS_CONFIG).map_err(ConfigError::Parse)?;
         let cfg = Config::load_or_create(APP_NAME, FILE_NAME, &default)?;
+        let auth = match cfg.get_as::<String>("auth_path") {
+            Ok(value) => value,
+            Err(ConfigError::KeyNotFound(_)) => DEFAULT_AUTH_PATH.to_string(),
+            Err(e) => return Err(e),
+        };
         Ok(Self {
             versions: cfg.get_as::<String>("versions_path")?,
             libs: cfg.get_as::<String>("libs_path")?,
             assets: cfg.get_as::<String>("assets_path")?,
+            auth,
         })
     }
 
@@ -56,5 +66,9 @@ impl Paths {
 
     pub fn assets_pathbuf(&self) -> PathBuf {
         musutils::fs::expand(&self.assets)
+    }
+
+    pub fn auth_pathbuf(&self) -> PathBuf {
+        musutils::fs::expand(&self.auth)
     }
 }

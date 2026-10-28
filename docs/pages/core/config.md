@@ -7,13 +7,14 @@ The configuration file is a small JSON document stored under the platform config
 - Linux / macOS: `~/.config/rml/paths.json`
 - Windows: `%APPDATA%\rml\paths.json`
 
-It contains three string fields:
+It contains four string fields:
 
 ```json
 {
   "versions_path": "~/rml/versions",
   "assets_path": "~/rml/assets",
-  "libs_path": "~/rml/libs"
+  "libs_path": "~/rml/libs",
+  "auth_path": "~/rml/auth"
 }
 ```
 
@@ -27,7 +28,7 @@ rmlib = { git = "https://github.com/musdev13/rmlib", default-features = false, f
 ```
 
 ```rust
-use rmlib::core::config::{init, Paths, get_versions_path, get_libs_path, get_assets_path};
+use rmlib::core::config::{init, Paths, check_config, get_versions_path, get_libs_path, get_assets_path, get_auth_path};
 ```
 
 ## `DEFAULT_PATHS_CONFIG`
@@ -42,7 +43,8 @@ The default configuration content, as a `serde_json::Value`:
 {
   "versions_path": "~/rml/versions",
   "assets_path": "~/rml/assets",
-  "libs_path": "~/rml/libs"
+  "libs_path": "~/rml/libs",
+  "auth_path": "~/rml/auth"
 }
 ```
 
@@ -61,6 +63,7 @@ pub struct Paths {
     pub versions: String,
     pub libs: String,
     pub assets: String,
+    pub auth: String,
 }
 ```
 
@@ -69,6 +72,7 @@ The raw (unexpanded) values from `paths.json`. Derives `Debug`, `Clone`.
 - `versions` — the `versions_path` field.
 - `libs` — the `libs_path` field.
 - `assets` — the `assets_path` field.
+- `auth` — the `auth_path` field.
 
 ### `Paths::load`
 
@@ -80,8 +84,10 @@ Loads `paths.json`, creating it from `DEFAULT_PATHS_CONFIG` if it does not exist
 
 Returns:
 
-- `Ok(Paths { versions, libs, assets })` — the three fields as stored (possibly `~/rml/...`).
-- `Err(ConfigError)` — I/O error while creating or reading the file, parse error, or a missing field (mapped to `ConfigError::KeyNotFound`).
+- `Ok(Paths { versions, libs, assets, auth })` — the four fields as stored (possibly `~/rml/...`).
+- `Err(ConfigError)` — I/O error while creating or reading the file, parse error, or a missing or mistyped field (mapped to `ConfigError::KeyNotFound` / `ConfigError::TypeMismatch`).
+
+`auth_path` is soft-migrated: if the file predates it and the key is absent, `load` returns the default `~/rml/auth` **without rewriting the file**. A present-but-wrong-typed `auth_path` is still reported as `TypeMismatch`. Use `Paths::init(true)` to persist the new field, or `check_config` to require it strictly.
 
 ```rust
 use rmlib::core::config::Paths;
@@ -145,6 +151,14 @@ pub fn assets_pathbuf(&self) -> PathBuf
 
 Same as `versions_pathbuf`, but for `assets`.
 
+### `Paths::auth_pathbuf`
+
+```rust
+pub fn auth_pathbuf(&self) -> PathBuf
+```
+
+Same as `versions_pathbuf`, but for `auth`.
+
 ## `init`
 
 ```rust
@@ -200,6 +214,46 @@ Shorthand for `Paths::load().unwrap().assets`. Panics on failure.
 let assets = rmlib::core::config::get_assets_path();
 ```
 
+## `get_auth_path`
+
+```rust
+pub fn get_auth_path() -> String
+```
+
+Shorthand for `Paths::load().unwrap().auth`. Panics on failure.
+
+```rust
+let auth = rmlib::core::config::get_auth_path();
+```
+
+## `check_config`
+
+```rust
+pub fn check_config() -> Result<(), ConfigError>
+```
+
+Strictly validates `paths.json`: the file must exist, parse as JSON, and contain all four string fields (`versions_path`, `libs_path`, `assets_path`, `auth_path`).
+
+Unlike `Paths::load`, no defaults are substituted — a file created before `auth_path` existed is reported as invalid. Use this to diagnose a broken configuration; use `Paths::load` to read it.
+
+Returns `Ok(())` when the configuration is valid, or the first `ConfigError` describing the problem:
+
+| Error | Meaning |
+|---|---|
+| `ConfigError::Io(_)` | The file does not exist or cannot be read. |
+| `ConfigError::Parse(_)` | The file is not valid JSON. |
+| `ConfigError::KeyNotFound(k)` | Field `k` is missing (`versions_path`, `libs_path`, `assets_path` or `auth_path`). |
+| `ConfigError::TypeMismatch { .. }` | A field exists but is not a string. |
+
+```rust
+use rmlib::core::config::check_config;
+
+match check_config() {
+    Ok(()) => println!("config is valid"),
+    Err(e) => eprintln!("config error: {e}"),
+}
+```
+
 ## Example: first run
 
 A typical "first launch" flow:
@@ -213,9 +267,10 @@ let paths = Paths::load().expect("config is unreadable");
 println!("versions: {:?}", paths.versions_pathbuf());
 println!("libs:     {:?}", paths.libs_pathbuf());
 println!("assets:   {:?}", paths.assets_pathbuf());
+println!("auth:     {:?}", paths.auth_pathbuf());
 ```
 
-After this, the three directories are the values the launcher will use for installation and launches. They are not created — `core::version::install` creates them on demand.
+After this, the four directories are the values the launcher will use for installation, launches and authentication. They are not created — `core::version::install` creates them on demand.
 
 ## Error type
 
@@ -225,7 +280,7 @@ Functions that can fail return `musutils::fs::config::ConfigError`:
 |---|---|
 | `ConfigError::Io(_)` | The file cannot be created, read or written. |
 | `ConfigError::Parse(_)` | The file is not valid JSON, or `DEFAULT_PATHS_CONFIG` failed to serialize (should not happen). |
-| `ConfigError::KeyNotFound(_)` | `paths.json` is missing one of `versions_path` / `libs_path` / `assets_path`. |
+| `ConfigError::KeyNotFound(_)` | A required field is missing. `Paths::load` soft-migrates a missing `auth_path`; `check_config` reports it. |
 | `ConfigError::TypeMismatch { .. }` | A field exists but is not a string. |
 | `ConfigError::InvalidKeyPath(_)` | Not expected from this module. |
 

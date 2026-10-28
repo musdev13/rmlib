@@ -140,6 +140,12 @@ pub unsafe extern "C" fn rmlib_get_assets_path() -> *mut c_char {
 
 #[cfg(feature = "core")]
 #[unsafe(no_mangle)]
+pub unsafe extern "C" fn rmlib_get_auth_path() -> *mut c_char {
+    catch_cstr(|| Ok(string_to_c(crate::core::config::get_auth_path())))
+}
+
+#[cfg(feature = "core")]
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rmlib_paths_load() -> *mut c_char {
     catch_cstr(|| {
         let p = crate::core::config::Paths::load().map_err(|e| e.to_string())?;
@@ -147,6 +153,7 @@ pub unsafe extern "C" fn rmlib_paths_load() -> *mut c_char {
             "versions": p.versions,
             "libs": p.libs,
             "assets": p.assets,
+            "auth": p.auth,
         });
         json_out(&v)
     })

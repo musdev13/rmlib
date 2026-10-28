@@ -109,8 +109,7 @@ Makefile                # make test / lint / check / docs-check / build-ffi / di
 12. **Tests must actually be run.** Before pushing, run `make test` and `make test-ffi`. Both must pass. A PR that adds functionality with tests that were not run locally is incomplete.
 
 13. **Every public change is reflected in documentation.** This is also required:
-    - **New or changed public item** (function, type, module, FFI export) — update **both**:
-      - doc comments on the item itself in the source (`///`, `//!`),
+    - **New or changed public item** (function, type, module, FFI export) — update:
       - the corresponding page under `docs/pages/` — see the [Documentation](#documentation) section below for which page covers what.
     - **Changes to features, feature dependencies, or setup** — update `Cargo.toml`, this file, `README.md`, and `docs/pages/getting-started/installation.md` / `features.md`.
     - **Breaking changes** — call them out in the PR description and in `CHANGELOG` / release notes.
@@ -215,9 +214,9 @@ make dist           # → same, plus copies artifacts into dist/
 
 Do not commit artifacts from `target/`, `dist/`, `site/`, or `venv/` — all of them are ignored by `.gitignore`.
 
-### License and trademark
+### License
 
-By submitting a Pull Request, you agree that your code will be distributed under the **LGPL-3.0** license, and you agree to the terms of the **Trademark Policy** (see `TRADEMARK.md`).
+By submitting a Pull Request, you agree that your code will be distributed under the **LGPL-3.0** license
 
 ---
 
@@ -332,7 +331,7 @@ Makefile                # make test / lint / check / docs-check / build-ffi / di
 12. **Тесты нужно реально прогонять.** Перед пушем запустите `make test` и `make test-ffi`. Оба должны пройти. PR, добавляющий функциональность с тестами, которые не были прогнаны локально, считается незавершённым.
 
 13. **Любое публичное изменение отражается в документации.** Это тоже обязательное требование:
-    - **Новый или изменённый публичный элемент** (функция, тип, модуль, FFI-экспорт) — обновите **и** doc-комментарии в исходнике (`///`, `//!`), **и** соответствующую страницу в `docs/pages/` — см. таблицу ниже.
+    - **Новый или изменённый публичный элемент** (функция, тип, модуль, FFI-экспорт) — обновите соответствующую страницу в `docs/pages/` — см. таблицу ниже.
     - **Изменения в фичах, их зависимостях или установке** — обновите `Cargo.toml`, этот файл, `README.md` и `docs/pages/getting-started/installation.md` / `features.md`.
     - **Ломающие изменения** — вынесите их в описание PR и в `CHANGELOG` / release notes.
     - **FFI-экспорты** — держите `rmlib.h` (если он есть) в соответствии с реальными символами. Добавление или удаление функции `rmlib_*` требует правки в заголовке **и** в `docs/pages/ffi/`.
@@ -436,9 +435,9 @@ make dist           # → то же + копия артефактов в dist/
 
 Не коммитьте артефакты из `target/`, `dist/`, `site/` или `venv/` — все они в `.gitignore`.
 
-### Лицензия и товарные знаки
+### Лицензия
 
-Отправляя Pull Request, вы соглашаетесь, что ваш код будет распространяться под лицензией **LGPL-3.0**, и соглашаетесь с условиями **политики использования товарных знаков** (см. `TRADEMARK.md`).
+Отправляя Pull Request, вы соглашаетесь, что ваш код будет распространяться под лицензией **LGPL-3.0**
 
 ---
 

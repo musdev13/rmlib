@@ -6,8 +6,10 @@ use std::fs;
 use std::path::PathBuf;
 
 use common::{HomeGuard, TempDir};
+use musutils::fs::config::ConfigError;
 use rmlib::core::config::{
-    DEFAULT_PATHS_CONFIG, Paths, get_assets_path, get_libs_path, get_versions_path, init,
+    DEFAULT_PATHS_CONFIG, Paths, check_config, get_assets_path, get_auth_path, get_libs_path,
+    get_versions_path, init,
 };
 
 fn default_str(field: &str) -> String {
@@ -17,11 +19,16 @@ fn default_str(field: &str) -> String {
         .to_string()
 }
 
+fn cfg_file(home: &TempDir) -> PathBuf {
+    home.path().join(".config").join("rml").join("paths.json")
+}
+
 #[test]
 fn default_paths_config_shape() {
     assert_eq!(DEFAULT_PATHS_CONFIG["versions_path"], "~/rml/versions");
     assert_eq!(DEFAULT_PATHS_CONFIG["libs_path"], "~/rml/libs");
     assert_eq!(DEFAULT_PATHS_CONFIG["assets_path"], "~/rml/assets");
+    assert_eq!(DEFAULT_PATHS_CONFIG["auth_path"], "~/rml/auth");
 }
 
 #[test]
@@ -33,9 +40,10 @@ fn paths_load_creates_default_file() {
     assert_eq!(paths.versions, default_str("versions_path"));
     assert_eq!(paths.libs, default_str("libs_path"));
     assert_eq!(paths.assets, default_str("assets_path"));
+    assert_eq!(paths.auth, default_str("auth_path"));
 
-    let cfg_file = home.path().join(".config").join("rml").join("paths.json");
-    assert!(cfg_file.exists(), "config file should be created");
+    let f = cfg_file(&home);
+    assert!(f.exists(), "config file should be created");
 }
 
 #[test]
@@ -48,6 +56,7 @@ fn paths_load_is_idempotent() {
     assert_eq!(a.versions, b.versions);
     assert_eq!(a.libs, b.libs);
     assert_eq!(a.assets, b.assets);
+    assert_eq!(a.auth, b.auth);
 }
 
 #[test]
@@ -55,11 +64,11 @@ fn paths_init_without_force_keeps_existing() {
     let home = TempDir::new("cfg_init_keep");
     let _guard = HomeGuard::new(home.path());
 
-    let cfg_dir = home.path().join(".config").join("rml");
-    fs::create_dir_all(&cfg_dir).unwrap();
+    let f = cfg_file(&home);
+    fs::create_dir_all(f.parent().unwrap()).unwrap();
     fs::write(
-        cfg_dir.join("paths.json"),
-        br#"{"versions_path":"/custom/versions","libs_path":"/custom/libs","assets_path":"/custom/assets"}"#,
+        &f,
+        br#"{"versions_path":"/custom/versions","libs_path":"/custom/libs","assets_path":"/custom/assets","auth_path":"/custom/auth"}"#,
     )
     .unwrap();
 
@@ -69,6 +78,7 @@ fn paths_init_without_force_keeps_existing() {
     assert_eq!(paths.versions, "/custom/versions");
     assert_eq!(paths.libs, "/custom/libs");
     assert_eq!(paths.assets, "/custom/assets");
+    assert_eq!(paths.auth, "/custom/auth");
 }
 
 #[test]
@@ -76,11 +86,11 @@ fn paths_init_force_overwrites_existing() {
     let home = TempDir::new("cfg_init_force");
     let _guard = HomeGuard::new(home.path());
 
-    let cfg_dir = home.path().join(".config").join("rml");
-    fs::create_dir_all(&cfg_dir).unwrap();
+    let f = cfg_file(&home);
+    fs::create_dir_all(f.parent().unwrap()).unwrap();
     fs::write(
-        cfg_dir.join("paths.json"),
-        br#"{"versions_path":"/custom/versions","libs_path":"/custom/libs","assets_path":"/custom/assets"}"#,
+        &f,
+        br#"{"versions_path":"/custom/versions","libs_path":"/custom/libs","assets_path":"/custom/assets","auth_path":"/custom/auth"}"#,
     )
     .unwrap();
 
@@ -90,6 +100,53 @@ fn paths_init_force_overwrites_existing() {
     assert_eq!(paths.versions, default_str("versions_path"));
     assert_eq!(paths.libs, default_str("libs_path"));
     assert_eq!(paths.assets, default_str("assets_path"));
+    assert_eq!(paths.auth, default_str("auth_path"));
+}
+
+#[test]
+fn paths_load_soft_migrates_missing_auth() {
+    let home = TempDir::new("cfg_soft_migrate");
+    let _guard = HomeGuard::new(home.path());
+
+    let f = cfg_file(&home);
+    fs::create_dir_all(f.parent().unwrap()).unwrap();
+    fs::write(
+        &f,
+        br#"{"versions_path":"/v","libs_path":"/l","assets_path":"/a"}"#,
+    )
+    .unwrap();
+
+    let p = Paths::load().unwrap();
+    assert_eq!(p.versions, "/v");
+    assert_eq!(p.libs, "/l");
+    assert_eq!(p.assets, "/a");
+    assert_eq!(p.auth, "~/rml/auth");
+
+    let contents = fs::read_to_string(&f).unwrap();
+    assert!(
+        !contents.contains("auth_path"),
+        "load must not rewrite the file"
+    );
+}
+
+#[test]
+fn paths_load_rejects_wrong_type_auth() {
+    let home = TempDir::new("cfg_auth_wrong_type");
+    let _guard = HomeGuard::new(home.path());
+
+    let f = cfg_file(&home);
+    fs::create_dir_all(f.parent().unwrap()).unwrap();
+    fs::write(
+        &f,
+        br#"{"versions_path":"/v","libs_path":"/l","assets_path":"/a","auth_path":42}"#,
+    )
+    .unwrap();
+
+    let err = Paths::load().unwrap_err();
+    assert!(
+        matches!(err, ConfigError::TypeMismatch { .. }),
+        "got: {err:?}"
+    );
 }
 
 #[test]
@@ -101,11 +158,13 @@ fn paths_pathbuf_expands_tilde() {
     let versions = paths.versions_pathbuf();
     let libs = paths.libs_pathbuf();
     let assets = paths.assets_pathbuf();
+    let auth = paths.auth_pathbuf();
 
     let home_path = home.path();
     assert_eq!(versions, home_path.join("rml").join("versions"));
     assert_eq!(libs, home_path.join("rml").join("libs"));
     assert_eq!(assets, home_path.join("rml").join("assets"));
+    assert_eq!(auth, home_path.join("rml").join("auth"));
 }
 
 #[test]
@@ -133,6 +192,14 @@ fn get_assets_path_returns_default() {
 }
 
 #[test]
+fn get_auth_path_returns_default() {
+    let home = TempDir::new("cfg_get_auth");
+    let _guard = HomeGuard::new(home.path());
+
+    assert_eq!(get_auth_path(), default_str("auth_path"));
+}
+
+#[test]
 fn config_init_does_not_panic() {
     let home = TempDir::new("cfg_init_smoke");
     let _guard = HomeGuard::new(home.path());
@@ -140,8 +207,8 @@ fn config_init_does_not_panic() {
     init(false);
     init(true);
 
-    let cfg_file = home.path().join(".config").join("rml").join("paths.json");
-    assert!(cfg_file.exists());
+    let f = cfg_file(&home);
+    assert!(f.exists());
 }
 
 #[test]
@@ -150,9 +217,11 @@ fn paths_struct_is_clone_debug() {
         versions: "a".to_string(),
         libs: "b".to_string(),
         assets: "c".to_string(),
+        auth: "d".to_string(),
     };
     let q = p.clone();
     assert_eq!(p.versions, q.versions);
+    assert_eq!(p.auth, q.auth);
     let _ = format!("{:?}", p);
 }
 
@@ -165,9 +234,103 @@ fn paths_pathbuf_relative_path_kept_relative() {
         versions: "relative/versions".to_string(),
         libs: "relative/libs".to_string(),
         assets: "relative/assets".to_string(),
+        auth: "relative/auth".to_string(),
     };
-    let _ = PathBuf::from("relative/versions");
     let v = p.versions_pathbuf();
     assert!(v.is_absolute());
     assert!(v.ends_with("relative/versions"));
+    let a = p.auth_pathbuf();
+    assert!(a.is_absolute());
+    assert!(a.ends_with("relative/auth"));
+}
+
+#[test]
+fn check_config_ok_after_init() {
+    let home = TempDir::new("check_cfg_ok");
+    let _guard = HomeGuard::new(home.path());
+
+    Paths::init(false).unwrap();
+    assert!(check_config().is_ok());
+}
+
+#[test]
+fn check_config_err_when_file_missing() {
+    let home = TempDir::new("check_cfg_missing_file");
+    let _guard = HomeGuard::new(home.path());
+
+    let err = check_config().unwrap_err();
+    assert!(matches!(err, ConfigError::Io(_)), "got: {err:?}");
+}
+
+#[test]
+fn check_config_err_on_invalid_json() {
+    let home = TempDir::new("check_cfg_bad_json");
+    let _guard = HomeGuard::new(home.path());
+
+    let f = cfg_file(&home);
+    fs::create_dir_all(f.parent().unwrap()).unwrap();
+    fs::write(&f, b"not json").unwrap();
+
+    let err = check_config().unwrap_err();
+    assert!(matches!(err, ConfigError::Parse(_)), "got: {err:?}");
+}
+
+#[test]
+fn check_config_err_when_auth_missing() {
+    let home = TempDir::new("check_cfg_missing_auth");
+    let _guard = HomeGuard::new(home.path());
+
+    let f = cfg_file(&home);
+    fs::create_dir_all(f.parent().unwrap()).unwrap();
+    fs::write(
+        &f,
+        br#"{"versions_path":"/v","libs_path":"/l","assets_path":"/a"}"#,
+    )
+    .unwrap();
+
+    let err = check_config().unwrap_err();
+    match err {
+        ConfigError::KeyNotFound(k) => assert_eq!(k, "auth_path"),
+        other => panic!("expected KeyNotFound, got: {other:?}"),
+    }
+}
+
+#[test]
+fn check_config_err_when_versions_missing() {
+    let home = TempDir::new("check_cfg_missing_versions");
+    let _guard = HomeGuard::new(home.path());
+
+    let f = cfg_file(&home);
+    fs::create_dir_all(f.parent().unwrap()).unwrap();
+    fs::write(
+        &f,
+        br#"{"libs_path":"/l","assets_path":"/a","auth_path":"/auth"}"#,
+    )
+    .unwrap();
+
+    let err = check_config().unwrap_err();
+    match err {
+        ConfigError::KeyNotFound(k) => assert_eq!(k, "versions_path"),
+        other => panic!("expected KeyNotFound, got: {other:?}"),
+    }
+}
+
+#[test]
+fn check_config_err_on_wrong_type() {
+    let home = TempDir::new("check_cfg_wrong_type");
+    let _guard = HomeGuard::new(home.path());
+
+    let f = cfg_file(&home);
+    fs::create_dir_all(f.parent().unwrap()).unwrap();
+    fs::write(
+        &f,
+        br#"{"versions_path":"/v","libs_path":"/l","assets_path":"/a","auth_path":42}"#,
+    )
+    .unwrap();
+
+    let err = check_config().unwrap_err();
+    assert!(
+        matches!(err, ConfigError::TypeMismatch { .. }),
+        "got: {err:?}"
+    );
 }
