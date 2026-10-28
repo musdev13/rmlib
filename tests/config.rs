@@ -150,6 +150,90 @@ fn paths_load_rejects_wrong_type_auth() {
 }
 
 #[test]
+fn paths_init_soft_migrates_missing_auth() {
+    let home = TempDir::new("cfg_init_migrate_auth");
+    let _guard = HomeGuard::new(home.path());
+
+    let f = cfg_file(&home);
+    fs::create_dir_all(f.parent().unwrap()).unwrap();
+    fs::write(
+        &f,
+        br#"{"versions_path":"/v","libs_path":"/l","assets_path":"/a"}"#,
+    )
+    .unwrap();
+
+    Paths::init(false).unwrap();
+
+    let p = Paths::load().unwrap();
+    assert_eq!(p.versions, "/v");
+    assert_eq!(p.libs, "/l");
+    assert_eq!(p.assets, "/a");
+    assert_eq!(p.auth, "~/rml/auth");
+
+    let contents = fs::read_to_string(&f).unwrap();
+    assert!(
+        contents.contains("auth_path"),
+        "init must persist auth_path"
+    );
+    assert!(contents.contains("/v"), "existing values must be preserved");
+}
+
+#[test]
+fn paths_init_soft_migrates_all_missing() {
+    let home = TempDir::new("cfg_init_migrate_all");
+    let _guard = HomeGuard::new(home.path());
+
+    let f = cfg_file(&home);
+    fs::create_dir_all(f.parent().unwrap()).unwrap();
+    fs::write(&f, br#"{"versions_path":"/v"}"#).unwrap();
+
+    Paths::init(false).unwrap();
+
+    let p = Paths::load().unwrap();
+    assert_eq!(p.versions, "/v");
+    assert_eq!(p.libs, default_str("libs_path"));
+    assert_eq!(p.assets, default_str("assets_path"));
+    assert_eq!(p.auth, default_str("auth_path"));
+}
+
+#[test]
+fn paths_init_valid_config_is_unchanged() {
+    let home = TempDir::new("cfg_init_noop");
+    let _guard = HomeGuard::new(home.path());
+
+    let f = cfg_file(&home);
+    fs::create_dir_all(f.parent().unwrap()).unwrap();
+    let original =
+        br#"{"versions_path":"/v","libs_path":"/l","assets_path":"/a","auth_path":"/auth"}"#;
+    fs::write(&f, original).unwrap();
+
+    Paths::init(false).unwrap();
+
+    let after = fs::read(&f).unwrap();
+    assert_eq!(after, original, "valid config must not be rewritten");
+}
+
+#[test]
+fn paths_init_rejects_wrong_typed_auth() {
+    let home = TempDir::new("cfg_init_wrong_type");
+    let _guard = HomeGuard::new(home.path());
+
+    let f = cfg_file(&home);
+    fs::create_dir_all(f.parent().unwrap()).unwrap();
+    let original = br#"{"versions_path":"/v","libs_path":"/l","assets_path":"/a","auth_path":42}"#;
+    fs::write(&f, original).unwrap();
+
+    let err = Paths::init(false).unwrap_err();
+    assert!(
+        matches!(err, ConfigError::TypeMismatch { .. }),
+        "got: {err:?}"
+    );
+
+    let after = fs::read(&f).unwrap();
+    assert_eq!(after, original, "file must not be modified on error");
+}
+
+#[test]
 fn paths_pathbuf_expands_tilde() {
     let home = TempDir::new("cfg_pathbuf");
     let _guard = HomeGuard::new(home.path());

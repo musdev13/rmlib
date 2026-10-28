@@ -19,6 +19,8 @@ pub static DEFAULT_PATHS_CONFIG: LazyLock<Value> = LazyLock::new(|| {
 pub(crate) const APP_NAME: &str = "rml";
 pub(crate) const FILE_NAME: &str = "paths.json";
 
+const REQUIRED_KEYS: [&str; 4] = ["versions_path", "libs_path", "assets_path", "auth_path"];
+
 #[derive(Debug, Clone)]
 pub struct Paths {
     pub versions: String,
@@ -50,8 +52,26 @@ impl Paths {
             serde_json::to_string_pretty(&*DEFAULT_PATHS_CONFIG).map_err(ConfigError::Parse)?;
         if force {
             musutils::fs::config::rewrite(APP_NAME, FILE_NAME, &default)?;
-        } else {
-            Config::load_or_create(APP_NAME, FILE_NAME, &default)?;
+            return Ok(());
+        }
+        let mut cfg = Config::load_or_create(APP_NAME, FILE_NAME, &default)?;
+        let mut changed = false;
+        for key in REQUIRED_KEYS {
+            match cfg.get_as::<String>(key) {
+                Ok(_) => {}
+                Err(ConfigError::KeyNotFound(_)) => {
+                    let value = DEFAULT_PATHS_CONFIG
+                        .get(key)
+                        .cloned()
+                        .ok_or_else(|| ConfigError::KeyNotFound(key.to_string()))?;
+                    cfg.set(key, value)?;
+                    changed = true;
+                }
+                Err(e) => return Err(e),
+            }
+        }
+        if changed {
+            cfg.save()?;
         }
         Ok(())
     }

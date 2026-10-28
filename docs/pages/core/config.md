@@ -87,7 +87,7 @@ Returns:
 - `Ok(Paths { versions, libs, assets, auth })` — the four fields as stored (possibly `~/rml/...`).
 - `Err(ConfigError)` — I/O error while creating or reading the file, parse error, or a missing or mistyped field (mapped to `ConfigError::KeyNotFound` / `ConfigError::TypeMismatch`).
 
-`auth_path` is soft-migrated: if the file predates it and the key is absent, `load` returns the default `~/rml/auth` **without rewriting the file**. A present-but-wrong-typed `auth_path` is still reported as `TypeMismatch`. Use `Paths::init(true)` to persist the new field, or `check_config` to require it strictly.
+`auth_path` is soft-migrated: if the file predates it and the key is absent, `load` returns the default `~/rml/auth` **without rewriting the file**. A present-but-wrong-typed `auth_path` is still reported as `TypeMismatch`. Use `Paths::init(false)` to persist the field, or `check_config` to require it strictly.
 
 ```rust
 use rmlib::core::config::Paths;
@@ -102,17 +102,19 @@ println!("versions: {}", paths.versions);
 pub fn init(force: bool) -> Result<(), ConfigError>
 ```
 
-Creates the configuration file if it does not exist.
+Creates the configuration file if it does not exist, and fills in missing fields of an existing one.
 
-- `force = false` — creates the file only if missing; leaves an existing file untouched.
+- `force = false` — creates the file if missing. If it already exists, any of the four required keys that are absent are added with their default values; existing values are preserved. A file that is already complete is not rewritten.
 - `force = true` — rewrites the file with `DEFAULT_PATHS_CONFIG`, discarding any user edits.
 
-Returns `Ok(())` on success, `Err(ConfigError)` on I/O failure.
+A present-but-wrong-typed field is reported as `ConfigError::TypeMismatch`; the file is not modified in that case.
+
+Returns `Ok(())` on success, `Err(ConfigError)` on I/O failure or a malformed field.
 
 ```rust
 use rmlib::core::config::Paths;
 
-// First-time setup, do not clobber an existing file.
+// First-time setup. Adds missing fields, keeps existing values.
 Paths::init(false).unwrap();
 
 // Reset to defaults.

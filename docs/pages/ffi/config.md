@@ -22,7 +22,7 @@ Creates the configuration file if it does not exist — same as `rmlib::core::co
 
 | Parameter | Meaning |
 |---|---|
-| `force` | `true` → rewrite the file with defaults (discarding user edits). `false` → create only if missing. |
+| `force` | `true` → rewrite the file with defaults (discarding user edits). `false` → create if missing, otherwise add any missing fields and keep existing values. |
 
 ### Behaviour
 
@@ -176,7 +176,7 @@ else:
 int32_t rmlib_paths_init(bool force);
 ```
 
-Equivalent to `Paths::init(force)` — creates the configuration file, or rewrites it when `force` is `true`.
+Equivalent to `Paths::init(force)` — creates the configuration file, fills in missing fields of an existing one, or rewrites it when `force` is `true`.
 
 Unlike `rmlib_config_init`, this one **does** report failure through its return code: the underlying `Paths::init` returns `Result<(), ConfigError>`, and the wrapper maps it to `0` / `-1`.
 
@@ -184,7 +184,7 @@ Unlike `rmlib_config_init`, this one **does** report failure through its return 
 
 | Parameter | Meaning |
 |---|---|
-| `force` | `true` → overwrite with defaults. `false` → create only if missing. |
+| `force` | `true` → overwrite with defaults. `false` → create if missing, otherwise add any missing fields and keep existing values. |
 
 ### Returns
 
