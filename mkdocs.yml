@@ -60,3 +60,4 @@ nav:
       - Installation: pages/ffi/install.md
       - Run: pages/ffi/run.md
       - Ely.by: pages/ffi/ely.md
+      - Profiles: pages/ffi/profiles.md
