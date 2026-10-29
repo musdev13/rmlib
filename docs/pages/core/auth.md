@@ -42,9 +42,16 @@ pub struct McProfile {
     pub xuid: String,
     pub has_license: bool,
 }
+
+pub struct DeviceCode {
+    pub device_code: String,
+    pub user_code: String,
+    pub verification_uri: String,
+    pub interval: u64,
+}
 ```
 
-`MsTokens` is what is written to `ms.json`. `McProfile` is the result of the Minecraft-side flow.
+`MsTokens` is what is written to `ms.json`. `McProfile` is the result of the Minecraft-side flow. `DeviceCode` is an in-progress login (see below).
 
 `has_license` is `false` when the account has no Minecraft license. In that case the fields that require a license are set to the `"no_license"` placeholder, while values that could still be obtained (for example `xuid`) are kept:
 
@@ -56,18 +63,36 @@ pub struct McProfile {
 | `xuid` | Xbox user id | Xbox user id | Xbox user id |
 | `has_license` | `true` | `false` | `false` |
 
-## `login` / `login_at`
+## Device-code login: two steps
+
+The login is split into two calls, so a caller (e.g. a CLI) can display the code itself and then show its own progress UI:
+
+```rust
+pub async fn request_device_code() -> Result<DeviceCode, AuthError>
+pub async fn poll_device_code(dir: Option<&Path>, device: &DeviceCode) -> Result<MsTokens, AuthError>
+```
+
+- **`request_device_code`** asks Microsoft for a device code and returns it. It prints nothing.
+- **`poll_device_code`** polls the token endpoint until the user confirms in the browser, then saves the tokens to `ms.json` (in `dir`, or in `auth_path` when `dir` is `None`) and returns them. It prints nothing.
+
+Typical usage:
+
+```rust
+use rmlib::core::auth::{poll_device_code, request_device_code};
+
+let device = request_device_code().await?;
+println!("open {} and enter {}", device.verification_uri, device.user_code);
+let tokens = poll_device_code(None, &device).await?;
+```
+
+### `login` / `login_at`
 
 ```rust
 pub async fn login() -> Result<MsTokens, AuthError>
 pub async fn login_at(dir: Option<&Path>) -> Result<MsTokens, AuthError>
 ```
 
-Runs the Microsoft **device code** flow:
-
-1. Requests a device code and prints the verification URL and user code to stdout (via `musutils::types::Status::Note`).
-2. Polls the token endpoint until the user confirms in the browser (honours `authorization_pending` / `slow_down`, fails on `expired_token`).
-3. Saves the resulting tokens to `auth_path/ms.json` (or `dir/ms.json` for `login_at`) and returns them.
+Convenience wrapper: `request_device_code()` then `poll_device_code(dir, ..)`. It prints the verification URL and user code to **stderr** (via `musutils::types::Status::Note`), so stdout stays clean for machine-readable output.
 
 This is interactive: the user has to open the printed URL and enter the code.
 
@@ -105,6 +130,8 @@ The high-level entry point. Workflow:
 2. If tokens are present, `refresh_at(dir, ..)` them. If the refresh fails (expired / revoked), fall back to `login_at(dir)`.
 3. If no tokens are present, `login_at(dir)`.
 4. `get_profile()` with the resulting Microsoft access token, and return the `McProfile`.
+
+Because the fallback goes through `login_at`, the device-code hint is printed to **stderr**, keeping stdout clean.
 
 ```rust
 use rmlib::core::auth::get_data;
@@ -177,6 +204,7 @@ pub enum AuthError {
 - The flow requires network access to `login.live.com`, `*.auth.xboxlive.com` and `api.minecraftservices.com`.
 - `core::auth` uses `reqwest` directly (like `extra::ely::auth`); there is no shared POST helper in `musutils` yet.
 - The module is behind the `core` feature only — it does not depend on `extra`.
+- `request_device_code` / `poll_device_code` print nothing; only the `login*` convenience wrappers print, and they print to stderr.
 
 ## See also
 

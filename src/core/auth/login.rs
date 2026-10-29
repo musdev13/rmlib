@@ -3,7 +3,7 @@ use std::time::Duration;
 
 use musutils::types::Status;
 
-use super::dto::{DeviceCodeResponse, MsTokens, TokenErrorResponse, TokenResponse};
+use super::dto::{DeviceCode, DeviceCodeResponse, MsTokens, TokenErrorResponse, TokenResponse};
 use super::error::AuthError;
 use super::store::save_tokens_at;
 
@@ -11,10 +11,8 @@ const DEVICE_CODE_URL: &str = "https://login.live.com/oauth20_connect.srf";
 const TOKEN_URL: &str = "https://login.live.com/oauth20_token.srf";
 const SCOPE: &str = "XboxLive.signin offline_access";
 
-pub async fn login_at(dir: Option<&Path>) -> Result<MsTokens, AuthError> {
-    let client = reqwest::Client::new();
-
-    let device: DeviceCodeResponse = client
+pub async fn request_device_code() -> Result<DeviceCode, AuthError> {
+    let response: DeviceCodeResponse = reqwest::Client::new()
         .post(DEVICE_CODE_URL)
         .form(&[
             ("client_id", crate::CLIENT_ID),
@@ -27,14 +25,20 @@ pub async fn login_at(dir: Option<&Path>) -> Result<MsTokens, AuthError> {
         .json()
         .await?;
 
-    println!(
-        "{}: open {} and enter code {}",
-        Status::Note.as_colored_str(),
-        device.verification_uri,
-        device.user_code
-    );
+    Ok(DeviceCode {
+        device_code: response.device_code,
+        user_code: response.user_code,
+        verification_uri: response.verification_uri,
+        interval: response.interval.unwrap_or(5).max(1),
+    })
+}
 
-    let mut interval = device.interval.unwrap_or(5).max(1);
+pub async fn poll_device_code(
+    dir: Option<&Path>,
+    device: &DeviceCode,
+) -> Result<MsTokens, AuthError> {
+    let client = reqwest::Client::new();
+    let mut interval = device.interval.max(1);
 
     loop {
         tokio::time::sleep(Duration::from_secs(interval)).await;
@@ -84,6 +88,17 @@ pub async fn login_at(dir: Option<&Path>) -> Result<MsTokens, AuthError> {
             }
         }
     }
+}
+
+pub async fn login_at(dir: Option<&Path>) -> Result<MsTokens, AuthError> {
+    let device = request_device_code().await?;
+    eprintln!(
+        "{}: open {} and enter code {}",
+        Status::Note.as_colored_str(),
+        device.verification_uri,
+        device.user_code
+    );
+    poll_device_code(dir, &device).await
 }
 
 pub async fn login() -> Result<MsTokens, AuthError> {

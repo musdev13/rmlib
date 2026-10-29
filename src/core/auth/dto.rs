@@ -17,6 +17,14 @@ pub struct McProfile {
     pub has_license: bool,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct DeviceCode {
+    pub device_code: String,
+    pub user_code: String,
+    pub verification_uri: String,
+    pub interval: u64,
+}
+
 #[derive(Debug, Deserialize)]
 pub(crate) struct DeviceCodeResponse {
     pub device_code: String,

@@ -22,7 +22,7 @@ char *rmlib_ms_auth_login(void);
 char *rmlib_ms_auth_login_at(const char *dir);
 ```
 
-Runs the Microsoft device-code login flow (`core::auth::login` / `login_at`): prints the verification URL and user code to stdout, waits for the user to confirm, then saves the tokens to `ms.json` (in `dir`, or in `auth_path` when `dir` is `NULL`).
+Runs the Microsoft device-code login flow (`core::auth::login` / `login_at`): prints the verification URL and user code to **stderr**, waits for the user to confirm, then saves the tokens to `ms.json` (in `dir`, or in `auth_path` when `dir` is `NULL`).
 
 **This call blocks** until the user completes the login in a browser or the device code expires.
 
