@@ -30,9 +30,10 @@ zip = "9.1"
 musutils = { path = "../musutils", features = ["fs-v2", "http-v2", "os-v2", "types-v2", "color-v2"] }
 
 [features]
-default = ["core", "ely", "fabric", "neoforge"]
+default = ["core", "ely", "fabric", "neoforge", "profiles"]
 core = []
 ely = ["core"]
 fabric = ["core"]
 neoforge = ["core"]
+profiles = ["core"]
 ffi = []

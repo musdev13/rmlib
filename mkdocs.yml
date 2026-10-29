@@ -49,6 +49,7 @@ nav:
       - Ely.by: pages/extra/ely.md
       - Fabric: pages/extra/fabric.md
       - NeoForge: pages/extra/neoforge.md
+      - Profiles: pages/extra/profiles.md
   - FFI:
       - Overview: pages/ffi/index.md
       - Library Info: pages/ffi/lib.md
