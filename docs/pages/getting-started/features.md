@@ -8,12 +8,13 @@
 core
 ├── ely       (implies core)
 ├── fabric    (implies core)
-└── neoforge  (implies core)
+├── neoforge  (implies core)
+└── profiles  (implies core)
 
 ffi           (independent of area features)
 ```
 
-`default = ["core", "ely", "fabric", "neoforge"]`.
+`default = ["core", "ely", "fabric", "neoforge", "profiles"]`.
 
 ## `core`
 
@@ -40,6 +41,14 @@ Ely.by authentication and the `authlib-injector` patch. Implies `core`.
 - `rmlib::extra::ely::login` — authenticate with Ely.by, returns `AuthResult`.
 - `rmlib::extra::ely::install_patch` — download `authlib-injector.jar` into the libs directory.
 - `rmlib::extra::ely::start_beta_proxy` — start a local skin proxy for old beta versions.
+
+### `profiles`
+
+Saved account profiles for Ely.by and Microsoft accounts. Implies `core`.
+
+- `rmlib::extra::profiles::Profile` / `ProfileKind` — a stored account: username, uuid, access token, and optional client token / xuid / license flag.
+- `rmlib::extra::profiles::{save_profile, load_profile, delete_profile, list_profiles}` — store/read profiles under `auth_path/profiles/{ely,ms}/<username>.json`.
+- Every function has an `_at` variant taking an explicit auth directory, mirroring `core::auth`.
 
 ### `fabric`
 
@@ -69,7 +78,7 @@ The crate always sets `crate-type = ["rlib", "cdylib"]`, so `librmlib.so` / `.dy
 ## Cross-feature interaction
 
 - The launch flags `ely: bool` and `betafix: bool` in `core::run` are **runtime flags**, not a compile-time dependency on `extra::ely`. You can build with only `core` and still pass `ely: true` — the launcher will inject `-javaagent:authlib-injector.jar=ely.by` if the JAR exists.
-- `available_modules()` reports the enabled areas (`core`, `ely`, `fabric`, `neoforge`) — see [Core API](../lib.md).
+- `available_modules()` reports the enabled areas (`core`, `ely`, `fabric`, `neoforge`, `profiles`) — see [Core API](../lib.md).
 - `ffi` exports for an area are gated with that area's feature. Building `--features "core ffi"` produces a `.so` without `rmlib_fabric_*` / `rmlib_neoforge_*` / `rmlib_ely_*`.
 
 ## Inter-feature conflicts
@@ -83,9 +92,10 @@ There are none: area features are additive, and `ffi` can be combined with any s
 | Library for a custom launcher (vanilla only) | `core` |
 | Launcher with mod loaders | `core`, `fabric`, `neoforge` |
 | Launcher with Ely.by auth | `core`, `ely` |
-| Full featured launcher | `core`, `ely`, `fabric`, `neoforge` (default) |
+| Launcher with saved account profiles | `core`, `profiles` |
+| Full featured launcher | `core`, `ely`, `fabric`, `neoforge`, `profiles` (default) |
 | Shared library for other languages (vanilla only) | `core`, `ffi` |
-| Shared library for other languages (full) | `core`, `ely`, `fabric`, `neoforge`, `ffi` |
+| Shared library for other languages (full) | `core`, `ely`, `fabric`, `neoforge`, `profiles`, `ffi` |
 
 ## See also
 

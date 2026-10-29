@@ -18,8 +18,9 @@ Thanks for your interest in the project!
 - `extra/ely` (feature `ely`) — Ely.by auth, authlib-injector patch, beta skin proxy.
 - `extra/fabric` (feature `fabric`) — Fabric Loader: version listing and installation.
 - `extra/neoforge` (feature `neoforge`) — NeoForge: version listing and installation.
+- `extra/profiles` (feature `profiles`) — saved account profiles for Ely.by and Microsoft accounts.
 
-`default = ["core", "ely", "fabric", "neoforge"]` — all currently available features are on by default. Each `extra` area feature implies `core` (`ely = ["core"]`, `fabric = ["core"]`, `neoforge = ["core"]`).
+`default = ["core", "ely", "fabric", "neoforge", "profiles"]` — all currently available features are on by default. Each `extra` area feature implies `core` (`ely = ["core"]`, `fabric = ["core"]`, `neoforge = ["core"]`, `profiles = ["core"]`).
 
 ```
 src/
@@ -31,11 +32,12 @@ src/
 │   ├── types/
 │   ├── version/
 │   └── test.rs
-├── extra/              # feature = "ely" | "fabric" | "neoforge"
+├── extra/              # feature = "ely" | "fabric" | "neoforge" | "profiles"
 │   ├── mod.rs
 │   ├── ely/
 │   ├── fabric/
-│   └── neoforge/
+│   ├── neoforge/
+│   └── profiles/
 └── ffi/                # feature = "ffi" — C ABI exports (see "FFI" section)
     ├── mod.rs
     ├── error.rs
@@ -78,7 +80,7 @@ Makefile                # make test / lint / check / docs-check / build-ffi / di
 
 2. **Keep the `core` / `extra` split.**
    - Base launcher functionality → `src/core/` (in the appropriate submodule: `config/`, `run/`, `types/`, `version/`).
-   - Additional/optional functionality → `src/extra/<area>/` (e.g. `extra/ely/`, `extra/fabric/`, `extra/neoforge/`, and future areas like `extra/mods/`, `extra/servers/`, `extra/profiles/`).
+   - Additional/optional functionality → `src/extra/<area>/` (e.g. `extra/ely/`, `extra/fabric/`, `extra/neoforge/`, and future areas like `extra/mods/`, `extra/servers/`).
 
 3. **Every `extra` area is its own Cargo feature.** Create `<area> = ["core"]` in `Cargo.toml`, gate the submodule with `#[cfg(feature = "<area>")] pub mod <area>;` in `src/extra/mod.rs`, and gate the whole `pub mod extra;` with `#[cfg(any(feature = "ely", feature = "fabric", feature = "neoforge", ...))]` in `src/lib.rs`. The `extra` crate module must not be enabled if no area feature is on.
 
@@ -133,8 +135,9 @@ Makefile                # make test / lint / check / docs-check / build-ffi / di
     | `extra::ely` | `docs/pages/extra/ely.md` |
     | `extra::fabric` | `docs/pages/extra/fabric.md` |
     | `extra::neoforge` | `docs/pages/extra/neoforge.md` |
+    | `extra::profiles` | `docs/pages/extra/profiles.md` |
     | FFI overview / conventions | `docs/pages/ffi/index.md` |
-    | FFI exports by area | `docs/pages/ffi/{lib,error,auth,config,version,install,run,ely}.md` |
+    | FFI exports by area | `docs/pages/ffi/{lib,error,auth,config,version,install,run,ely,profiles}.md` |
 
     A new `extra` area also needs: a new page under `docs/pages/extra/`, a new entry in the table in `docs/pages/extra/` (see `index`-like grouping on the relevant page), the new feature listed in `docs/pages/getting-started/features.md`, and a nav entry in `mkdocs.yml`.
 
@@ -241,8 +244,9 @@ Questions and suggestions — in Issues.
 - `extra/ely` (фича `ely`) — авторизация Ely.by, патч authlib-injector, beta-прокси для скинов.
 - `extra/fabric` (фича `fabric`) — Fabric Loader: список версий и установка.
 - `extra/neoforge` (фича `neoforge`) — NeoForge: список версий и установка.
+- `extra/profiles` (фича `profiles`) — сохранённые профили аккаунтов Ely.by и Microsoft.
 
-`default = ["core", "ely", "fabric", "neoforge"]` — все текущие фичи включены по умолчанию. Каждая фича-область в `extra` подразумевает `core` (`ely = ["core"]`, `fabric = ["core"]`, `neoforge = ["core"]`).
+`default = ["core", "ely", "fabric", "neoforge", "profiles"]` — все текущие фичи включены по умолчанию. Каждая фича-область в `extra` подразумевает `core` (`ely = ["core"]`, `fabric = ["core"]`, `neoforge = ["core"]`, `profiles = ["core"]`).
 
 ```
 src/
@@ -254,11 +258,12 @@ src/
 │   ├── types/
 │   ├── version/
 │   └── test.rs
-├── extra/              # фича = "ely" | "fabric" | "neoforge"
+├── extra/              # фича = "ely" | "fabric" | "neoforge" | "profiles"
 │   ├── mod.rs
 │   ├── ely/
 │   ├── fabric/
-│   └── neoforge/
+│   ├── neoforge/
+│   └── profiles/
 └── ffi/                # фича = "ffi" — экспорты C ABI (см. раздел «FFI»)
     ├── mod.rs
     ├── error.rs
@@ -301,7 +306,7 @@ Makefile                # make test / lint / check / docs-check / build-ffi / di
 
 2. **Сохраняйте разделение `core` / `extra`.**
    - Базовая функциональность → `src/core/` (в соответствующий подмодуль: `config/`, `run/`, `types/`, `version/`).
-   - Дополнительная/опциональная функциональность → `src/extra/<area>/` (например, `extra/ely/`, `extra/fabric/`, `extra/neoforge/` и будущие области вроде `extra/mods/`, `extra/servers/`, `extra/profiles/`).
+   - Дополнительная/опциональная функциональность → `src/extra/<area>/` (например, `extra/ely/`, `extra/fabric/`, `extra/neoforge/` и будущие области вроде `extra/mods/`, `extra/servers/`).
 
 3. **Каждая область в `extra` — отдельная Cargo-фича.** Создайте `<area> = ["core"]` в `Cargo.toml`, оберните подмодуль `#[cfg(feature = "<area>")] pub mod <area>;` в `src/extra/mod.rs`, а весь `pub mod extra;` оберните `#[cfg(any(feature = "ely", feature = "fabric", feature = "neoforge", ...))]` в `src/lib.rs`. Модуль `extra` не должен существовать, если не включена ни одна фича-область.
 
@@ -355,8 +360,9 @@ Makefile                # make test / lint / check / docs-check / build-ffi / di
     | `extra::ely` | `docs/pages/extra/ely.md` |
     | `extra::fabric` | `docs/pages/extra/fabric.md` |
     | `extra::neoforge` | `docs/pages/extra/neoforge.md` |
+    | `extra::profiles` | `docs/pages/extra/profiles.md` |
     | Обзор FFI / конвенции | `docs/pages/ffi/index.md` |
-    | FFI-экспорты по областям | `docs/pages/ffi/{lib,error,auth,config,version,install,run,ely}.md` |
+    | FFI-экспорты по областям | `docs/pages/ffi/{lib,error,auth,config,version,install,run,ely,profiles}.md` |
 
     Новая область `extra` также требует: новую страницу в `docs/pages/extra/`, запись в списке областей на соответствующих страницах, новую фичу в `docs/pages/getting-started/features.md` и запись в `nav:` файла `mkdocs.yml`.
 
