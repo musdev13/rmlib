@@ -2,6 +2,13 @@ use std::process::Command;
 
 use crate::core::run::build_command::build_argv;
 
+pub(crate) fn resolve_java_executable<'a>(custom: Option<&'a str>, fallback: &'a str) -> &'a str {
+    match custom {
+        Some(p) if !p.is_empty() => p,
+        _ => fallback,
+    }
+}
+
 #[allow(clippy::too_many_arguments)]
 pub async fn run_client(
     version_id: &str,
@@ -20,6 +27,7 @@ pub async fn run_client(
     native_path: &str,
     game_path: &str,
     spawn_path: &str,
+    java_path: Option<&str>,
     custom_jvm_args: &[String],
     custom_game_args: &[String],
 ) {
@@ -71,12 +79,14 @@ pub async fn run_client(
         norm_spawn_path.display()
     );
 
+    let java_executable = resolve_java_executable(java_path, &argv[0]);
+
     println!(
         "{}: spawning java process...",
         musutils::types::Status::Task.as_colored_str()
     );
 
-    let mut child = match Command::new(&argv[0])
+    let mut child = match Command::new(java_executable)
         .args(&argv[1..])
         .current_dir(&norm_spawn_path)
         .spawn()
@@ -112,5 +122,28 @@ pub async fn run_client(
                 e
             );
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::resolve_java_executable;
+
+    #[test]
+    fn resolve_java_executable_none_returns_fallback() {
+        assert_eq!(resolve_java_executable(None, "java"), "java");
+    }
+
+    #[test]
+    fn resolve_java_executable_empty_returns_fallback() {
+        assert_eq!(resolve_java_executable(Some(""), "java"), "java");
+    }
+
+    #[test]
+    fn resolve_java_executable_some_returns_custom() {
+        assert_eq!(
+            resolve_java_executable(Some("/opt/jdk/bin/java"), "java"),
+            "/opt/jdk/bin/java"
+        );
     }
 }

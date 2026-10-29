@@ -140,6 +140,12 @@ pub unsafe extern "C" fn rmlib_get_assets_path() -> *mut c_char {
 
 #[cfg(feature = "core")]
 #[unsafe(no_mangle)]
+pub unsafe extern "C" fn rmlib_get_auth_path() -> *mut c_char {
+    catch_cstr(|| Ok(string_to_c(crate::core::config::get_auth_path())))
+}
+
+#[cfg(feature = "core")]
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn rmlib_paths_load() -> *mut c_char {
     catch_cstr(|| {
         let p = crate::core::config::Paths::load().map_err(|e| e.to_string())?;
@@ -147,6 +153,7 @@ pub unsafe extern "C" fn rmlib_paths_load() -> *mut c_char {
             "versions": p.versions,
             "libs": p.libs,
             "assets": p.assets,
+            "auth": p.auth,
         });
         json_out(&v)
     })
@@ -407,6 +414,7 @@ pub unsafe extern "C" fn rmlib_run_client(opts_json: *const c_char) -> i32 {
         let v = parse_json_arg(opts_json)?;
         let o = parse_run_options(&v)?;
         let spawn_path = get_str_field(&v, "spawn_path").unwrap_or_default();
+        let java_path = get_str_field(&v, "java_path");
 
         block_on(crate::core::run::run_client(
             &o.version_id,
@@ -425,6 +433,7 @@ pub unsafe extern "C" fn rmlib_run_client(opts_json: *const c_char) -> i32 {
             &o.native_path,
             &o.game_path,
             &spawn_path,
+            java_path.as_deref(),
             &o.custom_jvm_args,
             &o.custom_game_args,
         ));
@@ -545,4 +554,82 @@ pub unsafe extern "C" fn rmlib_proxy_guard_free(ptr: *mut c_void) {
             drop(Box::from_raw(ptr as *mut crate::extra::ely::ProxyGuard));
         }
     }
+}
+
+fn auth_dir_arg(ptr: *const c_char) -> Result<Option<PathBuf>, String> {
+    Ok(unsafe { opt_cstr_to_string(ptr) }?.map(PathBuf::from))
+}
+
+#[cfg(feature = "core")]
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn rmlib_ms_auth_login_at(dir: *const c_char) -> *mut c_char {
+    catch_cstr(|| {
+        let dir = auth_dir_arg(dir)?;
+        let tokens =
+            block_on(crate::core::auth::login_at(dir.as_deref())).map_err(|e| e.to_string())?;
+        json_out(&tokens)
+    })
+}
+
+#[cfg(feature = "core")]
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn rmlib_ms_auth_login() -> *mut c_char {
+    unsafe { rmlib_ms_auth_login_at(std::ptr::null()) }
+}
+
+#[cfg(feature = "core")]
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn rmlib_ms_auth_refresh_at(dir: *const c_char) -> *mut c_char {
+    catch_cstr(|| {
+        let dir = auth_dir_arg(dir)?;
+        let saved = crate::core::auth::load_tokens_at(dir.as_deref()).map_err(|e| e.to_string())?;
+        let refresh_token = saved
+            .ok_or_else(|| "no saved ms tokens; run rmlib_ms_auth_login first".to_string())?
+            .refresh_token;
+        let tokens = block_on(crate::core::auth::refresh_at(
+            dir.as_deref(),
+            &refresh_token,
+        ))
+        .map_err(|e| e.to_string())?;
+        json_out(&tokens)
+    })
+}
+
+#[cfg(feature = "core")]
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn rmlib_ms_auth_refresh() -> *mut c_char {
+    unsafe { rmlib_ms_auth_refresh_at(std::ptr::null()) }
+}
+
+#[cfg(feature = "core")]
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn rmlib_ms_auth_get_data_at(dir: *const c_char) -> *mut c_char {
+    catch_cstr(|| {
+        let dir = auth_dir_arg(dir)?;
+        let profile =
+            block_on(crate::core::auth::get_data_at(dir.as_deref())).map_err(|e| e.to_string())?;
+        json_out(&profile)
+    })
+}
+
+#[cfg(feature = "core")]
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn rmlib_ms_auth_get_data() -> *mut c_char {
+    unsafe { rmlib_ms_auth_get_data_at(std::ptr::null()) }
+}
+
+#[cfg(feature = "core")]
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn rmlib_ms_auth_clear_at(dir: *const c_char) -> i32 {
+    catch_i32(|| {
+        let dir = auth_dir_arg(dir)?;
+        crate::core::auth::clear_tokens_at(dir.as_deref()).map_err(|e| e.to_string())?;
+        Ok(())
+    })
+}
+
+#[cfg(feature = "core")]
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn rmlib_ms_auth_clear() -> i32 {
+    unsafe { rmlib_ms_auth_clear_at(std::ptr::null()) }
 }

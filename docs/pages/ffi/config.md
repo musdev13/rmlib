@@ -22,7 +22,7 @@ Creates the configuration file if it does not exist — same as `rmlib::core::co
 
 | Parameter | Meaning |
 |---|---|
-| `force` | `true` → rewrite the file with defaults (discarding user edits). `false` → create only if missing. |
+| `force` | `true` → rewrite the file with defaults (discarding user edits). `false` → create if missing, otherwise add any missing fields and keep existing values. |
 
 ### Behaviour
 
@@ -83,7 +83,7 @@ if ptr:
     print(ctypes.string_at(ptr).decode())   # "~/rml/versions"
     lib.rmlib_string_free(ptr)
 else:
-    err = lib.rmlib_last_error()
+    err = rmlib_last_error()
     print("error:", ctypes.string_at(err).decode())
     lib.rmlib_string_free(err)
 ```
@@ -108,13 +108,23 @@ Returns `core::config::get_assets_path()` — the `assets_path` string from `pat
 
 Same return / error semantics as `rmlib_get_versions_path`.
 
+## `rmlib_get_auth_path`
+
+```c
+char *rmlib_get_auth_path(void);
+```
+
+Returns `core::config::get_auth_path()` — the `auth_path` string from `paths.json`.
+
+Same return / error semantics as `rmlib_get_versions_path`. On a config created before `auth_path` existed, `Paths::load` soft-migrates the value to `"~/rml/auth"`, so this export returns that default rather than failing.
+
 ## `rmlib_paths_load`
 
 ```c
 char *rmlib_paths_load(void);
 ```
 
-Loads the configuration and returns all three values as JSON — equivalent to calling `Paths::load()` in Rust.
+Loads the configuration and returns all four values as JSON — equivalent to calling `Paths::load()` in Rust.
 
 ### Schema
 
@@ -122,11 +132,12 @@ Loads the configuration and returns all three values as JSON — equivalent to c
 {
   "versions": "~/rml/versions",
   "libs": "~/rml/libs",
-  "assets": "~/rml/assets"
+  "assets": "~/rml/assets",
+  "auth": "~/rml/auth"
 }
 ```
 
-The three values are the **raw** strings from `paths.json` — `~` is not expanded. Expand them yourself (`musutils::fs::expand` does that in Rust; the C side gets the raw strings).
+The four values are the **raw** strings from `paths.json` — `~` is not expanded. Expand them yourself (`musutils::fs::expand` does that in Rust; the C side gets the raw strings).
 
 ### Returns
 
@@ -138,7 +149,7 @@ Returns `NULL` and sets `rmlib_last_error` if:
 
 - the config file cannot be created / read,
 - it is not valid JSON,
-- one of the three fields is missing or has the wrong type.
+- one of the four fields is missing or has the wrong type — note that a missing `auth_path` is soft-migrated and does **not** cause an error here; use `check_config` (Rust side) for strict validation.
 
 The error message is the `Display` output of `musutils::fs::config::ConfigError` — e.g. `"key not found: versions_path"`, `"type mismatch for key \`libs_path\`, expected alloc::string::String"`, `"parse error: …"`.
 
@@ -156,7 +167,7 @@ if not ptr:
 else:
     paths = json.loads(ctypes.string_at(ptr).decode())
     lib.rmlib_string_free(ptr)
-    print(paths["versions"], paths["libs"], paths["assets"])
+    print(paths["versions"], paths["libs"], paths["assets"], paths["auth"])
 ```
 
 ## `rmlib_paths_init`
@@ -165,7 +176,7 @@ else:
 int32_t rmlib_paths_init(bool force);
 ```
 
-Equivalent to `Paths::init(force)` — creates the configuration file, or rewrites it when `force` is `true`.
+Equivalent to `Paths::init(force)` — creates the configuration file, fills in missing fields of an existing one, or rewrites it when `force` is `true`.
 
 Unlike `rmlib_config_init`, this one **does** report failure through its return code: the underlying `Paths::init` returns `Result<(), ConfigError>`, and the wrapper maps it to `0` / `-1`.
 
@@ -173,7 +184,7 @@ Unlike `rmlib_config_init`, this one **does** report failure through its return 
 
 | Parameter | Meaning |
 |---|---|
-| `force` | `true` → overwrite with defaults. `false` → create only if missing. |
+| `force` | `true` → overwrite with defaults. `false` → create if missing, otherwise add any missing fields and keep existing values. |
 
 ### Returns
 
@@ -207,8 +218,9 @@ For new code, prefer **`rmlib_paths_init`** — it gives you a real success/fail
 
 ```text
 rmlib_paths_init(false)    → ensure paths.json exists
-rmlib_paths_load()         → read all three paths
+rmlib_paths_load()         → read all four paths
 rmlib_get_versions_path()  → or read one at a time
+rmlib_get_auth_path()      → the auth directory
 ```
 
 The values are raw strings (`~` unexpanded). If you need resolved paths for FFI calls that take path strings (e.g. `rmlib_version_install`), pass the raw strings — the Rust side expands them.

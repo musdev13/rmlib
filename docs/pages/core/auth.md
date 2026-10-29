@@ -1,0 +1,213 @@
+# core::auth
+
+Official Microsoft / Minecraft account authentication.
+
+This is the counterpart of [`extra::ely::auth`](../extra/ely.md) for official Mojang/Microsoft accounts: device-code login, token refresh, and a full Xbox Live → XSTS → Minecraft Services profile flow.
+
+Credentials are stored in `auth_path/ms.json` (see [`core::config`](config.md)). `auth_path` defaults to `~/rml/auth`.
+
+Every function that reads or writes `ms.json` has an `_at` variant taking `Option<&Path>`:
+
+- `Some(dir)` — use `dir` as the auth directory instead of the configured `auth_path`.
+- `None` — resolve `auth_path` from `paths.json` (the default behaviour).
+
+The non-`_at` functions are thin wrappers over `_at(None)`.
+
+## Enable
+
+`core::auth` is part of the `core` feature and requires no extra flags:
+
+```toml
+[dependencies]
+rmlib = { git = "https://github.com/musdev13/rmlib", default-features = false, features = ["core"] }
+```
+
+```rust
+use rmlib::core::auth::{get_data, login, refresh, load_tokens, save_tokens, clear_tokens, tokens_file, McProfile, MsTokens, AuthError};
+```
+
+## Types
+
+```rust
+pub struct MsTokens {
+    pub access_token: String,
+    pub refresh_token: String,
+    pub expires_in: Option<u64>,
+}
+
+pub struct McProfile {
+    pub username: String,
+    pub uuid: String,
+    pub access_token: String,
+    pub xuid: String,
+    pub has_license: bool,
+}
+
+pub struct DeviceCode {
+    pub device_code: String,
+    pub user_code: String,
+    pub verification_uri: String,
+    pub interval: u64,
+}
+```
+
+`MsTokens` is what is written to `ms.json`. `McProfile` is the result of the Minecraft-side flow. `DeviceCode` is an in-progress login (see below).
+
+`has_license` is `false` when the account has no Minecraft license. In that case the fields that require a license are set to the `"no_license"` placeholder, while values that could still be obtained (for example `xuid`) are kept:
+
+| Field | With license | Without license (early failure) | Without license (MC profile 404) |
+|---|---|---|---|
+| `username` | profile name | `"no_license"` | `"no_license"` |
+| `uuid` | profile id | `"no_license"` | `"no_license"` |
+| `access_token` | Minecraft access token | `"no_license"` | Minecraft access token |
+| `xuid` | Xbox user id | Xbox user id | Xbox user id |
+| `has_license` | `true` | `false` | `false` |
+
+## Device-code login: two steps
+
+The login is split into two calls, so a caller (e.g. a CLI) can display the code itself and then show its own progress UI:
+
+```rust
+pub async fn request_device_code() -> Result<DeviceCode, AuthError>
+pub async fn poll_device_code(dir: Option<&Path>, device: &DeviceCode) -> Result<MsTokens, AuthError>
+```
+
+- **`request_device_code`** asks Microsoft for a device code and returns it. It prints nothing.
+- **`poll_device_code`** polls the token endpoint until the user confirms in the browser, then saves the tokens to `ms.json` (in `dir`, or in `auth_path` when `dir` is `None`) and returns them. It prints nothing.
+
+Typical usage:
+
+```rust
+use rmlib::core::auth::{poll_device_code, request_device_code};
+
+let device = request_device_code().await?;
+println!("open {} and enter {}", device.verification_uri, device.user_code);
+let tokens = poll_device_code(None, &device).await?;
+```
+
+### `login` / `login_at`
+
+```rust
+pub async fn login() -> Result<MsTokens, AuthError>
+pub async fn login_at(dir: Option<&Path>) -> Result<MsTokens, AuthError>
+```
+
+Convenience wrapper: `request_device_code()` then `poll_device_code(dir, ..)`. It prints the verification URL and user code to **stderr** (via `musutils::types::Status::Note`), so stdout stays clean for machine-readable output.
+
+This is interactive: the user has to open the printed URL and enter the code.
+
+## `refresh` / `refresh_at`
+
+```rust
+pub async fn refresh(refresh_token: &str) -> Result<MsTokens, AuthError>
+pub async fn refresh_at(dir: Option<&Path>, refresh_token: &str) -> Result<MsTokens, AuthError>
+```
+
+Exchanges a `refresh_token` for a new `MsTokens` without user interaction, and saves the refreshed tokens to `ms.json` in `dir` or the configured `auth_path` (Microsoft rotates the refresh token, so persisting it matters).
+
+Returns `Err(AuthError::Status { .. })` if the token is expired or revoked.
+
+## `get_profile`
+
+```rust
+pub async fn get_profile(ms_access_token: &str) -> Result<McProfile, AuthError>
+```
+
+Runs the Xbox Live → XSTS → Minecraft Services chain with a Microsoft access token and returns an `McProfile`.
+
+If Minecraft Services rejects the login or returns `404` for the profile, the returned `McProfile` has `has_license = false` and placeholder fields as described above — this is not an error.
+
+## `get_data` / `get_data_at`
+
+```rust
+pub async fn get_data() -> Result<McProfile, AuthError>
+pub async fn get_data_at(dir: Option<&Path>) -> Result<McProfile, AuthError>
+```
+
+The high-level entry point. Workflow:
+
+1. `load_tokens_at(dir)` — read `ms.json` if it exists.
+2. If tokens are present, `refresh_at(dir, ..)` them. If the refresh fails (expired / revoked), fall back to `login_at(dir)`.
+3. If no tokens are present, `login_at(dir)`.
+4. `get_profile()` with the resulting Microsoft access token, and return the `McProfile`.
+
+Because the fallback goes through `login_at`, the device-code hint is printed to **stderr**, keeping stdout clean.
+
+```rust
+use rmlib::core::auth::get_data;
+
+let profile = get_data().await?;
+if !profile.has_license {
+    eprintln!("warning: account has no Minecraft license");
+}
+println!("{} ({})", profile.username, profile.uuid);
+```
+
+## Token storage
+
+```rust
+pub fn save_tokens(tokens: &MsTokens) -> Result<(), AuthError>
+pub fn save_tokens_at(dir: Option<&Path>, tokens: &MsTokens) -> Result<(), AuthError>
+
+pub fn load_tokens() -> Result<Option<MsTokens>, AuthError>
+pub fn load_tokens_at(dir: Option<&Path>) -> Result<Option<MsTokens>, AuthError>
+
+pub fn clear_tokens() -> Result<(), AuthError>
+pub fn clear_tokens_at(dir: Option<&Path>) -> Result<(), AuthError>
+
+pub fn tokens_file() -> Result<PathBuf, AuthError>
+pub fn tokens_file_at(dir: Option<&Path>) -> Result<PathBuf, AuthError>
+```
+
+- `save_tokens*` write `ms.json` atomically (creating the directory if needed).
+- `load_tokens*` return `Ok(None)` if the file is absent **or** cannot be parsed — a corrupt file is treated as "not logged in" rather than an error.
+- `clear_tokens*` remove `ms.json` if it exists.
+- `tokens_file*` return the resolved path, useful for diagnostics.
+
+The `_at` variants take an explicit directory; the plain variants resolve `auth_path` from the config.
+
+```rust
+use rmlib::core::auth::{clear_tokens, tokens_file};
+
+println!("tokens are stored at {}", tokens_file()?.display());
+clear_tokens()?; // log out
+```
+
+## Error type
+
+```rust
+pub enum AuthError {
+    Io(std::io::Error),
+    Http(reqwest::Error),
+    Json(serde_json::Error),
+    Config(musutils::fs::config::ConfigError),
+    Status { code: u16, body: String },
+    DeviceCode { error: String, description: Option<String> },
+    InvalidResponse(String),
+    DeviceCodeExpired,
+}
+```
+
+| Variant | Cause |
+|---|---|
+| `Io` | `ms.json` cannot be read or written. |
+| `Http` | A request failed at the transport level. |
+| `Json` | A response body could not be deserialized. |
+| `Config` | `paths.json` could not be loaded (so `auth_path` is unknown). |
+| `Status { .. }` | A non-success HTTP status that is not handled as "no license". |
+| `DeviceCode { .. }` | The device-code endpoint returned an unexpected error. |
+| `InvalidResponse(_)` | A response was well-formed JSON but missing expected fields. |
+| `DeviceCodeExpired` | The user did not confirm the device code in time. |
+
+## Notes
+
+- The flow requires network access to `login.live.com`, `*.auth.xboxlive.com` and `api.minecraftservices.com`.
+- `core::auth` uses `reqwest` directly (like `extra::ely::auth`); there is no shared POST helper in `musutils` yet.
+- The module is behind the `core` feature only — it does not depend on `extra`.
+- `request_device_code` / `poll_device_code` print nothing; only the `login*` convenience wrappers print, and they print to stderr.
+
+## See also
+
+- [Config](config.md) — `auth_path` and `ms.json` location.
+- [extra::Ely.by](../extra/ely.md) — the alternative (non-official) auth flow.
+- [FFI — Auth](../ffi/auth.md) — C exports for this module.

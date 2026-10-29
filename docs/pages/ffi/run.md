@@ -179,21 +179,22 @@ No process is spawned. Useful for logging, reproducing a launch manually, or pip
 int32_t rmlib_run_client(const char *opts_json);
 ```
 
-Assembles the command (same as `rmlib_build_argv`) and **spawns `java`**, then blocks until the game exits.
+Assembles the command (same as `rmlib_build_argv`) and **spawns a Java executable**, then blocks until the game exits.
 
 ### Options schema
 
-Same as `rmlib_build_argv`, plus one key:
+Same as `rmlib_build_argv`, plus:
 
 | Key | Type | Default | Meaning |
 |---|---|---|---|
 | `spawn_path` | string | `""` | Working directory for the `java` process. `~` / `..` expanded. |
+| `java_path` | string or `null` | `null` | Path to a Java executable (e.g. `/usr/lib/jvm/temurin-21/bin/java`). When absent or empty, `java` from `PATH` is used. |
 
 ### Behaviour
 
 - Prints `preparing launch sequence...`, `spawn dir - …`, `spawning java process...`, `instance started successfully! Press Ctrl+C to exit.`, then waits for the process and prints the exit status.
 - Same panic/reporting semantics as the Rust `run_client`: internal `build_argv` errors are printed and the function returns `0` (the Rust function returns `()` — this wrapper maps that to `0`).
-- If `java` cannot be spawned, prints an error and returns `0`.
+- If the Java executable (custom or from `PATH`) cannot be spawned, prints an error and returns `0`.
 - **Blocks** until the game process exits. This can be hours. Do not call it on a UI thread.
 
 ### Returns
@@ -225,6 +226,8 @@ opts = {
     "native_path": "~/rml/libs/natives",
     "game_path": "~/.minecraft",
     "spawn_path": "~/.minecraft",
+    # Optional: use a specific JDK. Omit / null to use `java` from PATH.
+    "java_path": "/usr/lib/jvm/temurin-21/bin/java",
 }
 
 rc = lib.rmlib_run_client(json.dumps(opts).encode())
@@ -232,7 +235,7 @@ rc = lib.rmlib_run_client(json.dumps(opts).encode())
 # rc == -1 → options decoding or a panic failed the call before launch.
 ```
 
-**Blocks until the game exits.** `java` must be on `PATH`.
+**Blocks until the game exits.** If `java_path` is omitted, `java` must be on `PATH`.
 
 ## Which to use?
 

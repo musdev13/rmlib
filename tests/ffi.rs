@@ -1,11 +1,16 @@
 #![cfg(feature = "ffi")]
 
+mod common;
+
 use std::ffi::{CStr, CString};
 use std::os::raw::c_char;
 
+use common::{HomeGuard, TempDir};
 use rmlib::ffi::exports::{
     rmlib_available_modules, rmlib_build_maven_path, rmlib_client_id, rmlib_client_token,
-    rmlib_name, rmlib_version, rmlib_version_sort_by_type, rmlib_version_strip_version,
+    rmlib_get_auth_path, rmlib_ms_auth_clear, rmlib_ms_auth_clear_at, rmlib_ms_auth_refresh,
+    rmlib_ms_auth_refresh_at, rmlib_name, rmlib_paths_load, rmlib_version,
+    rmlib_version_sort_by_type, rmlib_version_strip_version,
 };
 use rmlib::ffi::{rmlib_last_error, rmlib_string_free};
 
@@ -182,4 +187,113 @@ fn ffi_strip_version_keeps_all() {
 #[test]
 fn ffi_string_free_null_is_noop() {
     unsafe { rmlib_string_free(std::ptr::null_mut()) };
+}
+
+#[test]
+fn ffi_get_auth_path_returns_default() {
+    let home = TempDir::new("ffi_auth_path");
+    let _guard = HomeGuard::new(home.path());
+
+    let s = unsafe { take_string(rmlib_get_auth_path()) }.unwrap();
+    assert_eq!(s, "~/rml/auth");
+}
+
+#[test]
+fn ffi_paths_load_includes_auth() {
+    let home = TempDir::new("ffi_paths_auth");
+    let _guard = HomeGuard::new(home.path());
+
+    let s = unsafe { take_string(rmlib_paths_load()) }.unwrap();
+    let v: serde_json::Value = serde_json::from_str(&s).unwrap();
+    assert_eq!(v["auth"], "~/rml/auth");
+    assert_eq!(v["versions"], "~/rml/versions");
+}
+
+#[test]
+fn ffi_ms_auth_clear_ok() {
+    let home = TempDir::new("ffi_ms_clear");
+    let _guard = HomeGuard::new(home.path());
+
+    assert_eq!(unsafe { rmlib_ms_auth_clear() }, 0);
+}
+
+#[test]
+fn ffi_ms_auth_refresh_without_tokens_errors() {
+    let home = TempDir::new("ffi_ms_refresh_no_tokens");
+    let _guard = HomeGuard::new(home.path());
+
+    unsafe { clear_error() };
+    let ptr = unsafe { rmlib_ms_auth_refresh() };
+    assert!(ptr.is_null(), "expected NULL without saved tokens");
+    let err = unsafe { take_error() }.expect("last_error should be set");
+    assert!(
+        err.contains("no saved ms tokens"),
+        "unexpected error: {err}"
+    );
+}
+
+#[test]
+fn ffi_ms_auth_clear_at_custom_dir_ok() {
+    let home = TempDir::new("ffi_ms_clear_at");
+    let _guard = HomeGuard::new(home.path());
+
+    let dir = home.join("custom_auth");
+    let c = CString::new(dir.to_string_lossy().to_string()).unwrap();
+
+    rmlib::core::auth::save_tokens_at(
+        Some(&dir),
+        &rmlib::core::auth::MsTokens {
+            access_token: "a".to_string(),
+            refresh_token: "r".to_string(),
+            expires_in: None,
+        },
+    )
+    .unwrap();
+    assert!(dir.join("ms.json").exists());
+
+    let rc = unsafe { rmlib_ms_auth_clear_at(c.as_ptr()) };
+    assert_eq!(rc, 0);
+    assert!(!dir.join("ms.json").exists());
+}
+
+#[test]
+fn ffi_ms_auth_clear_at_null_uses_config() {
+    let home = TempDir::new("ffi_ms_clear_at_null");
+    let _guard = HomeGuard::new(home.path());
+
+    let rc = unsafe { rmlib_ms_auth_clear_at(std::ptr::null()) };
+    assert_eq!(rc, 0);
+}
+
+#[test]
+fn ffi_ms_auth_refresh_at_null_errors_like_default() {
+    let home = TempDir::new("ffi_ms_refresh_at_null");
+    let _guard = HomeGuard::new(home.path());
+
+    unsafe { clear_error() };
+    let ptr = unsafe { rmlib_ms_auth_refresh_at(std::ptr::null()) };
+    assert!(ptr.is_null());
+    let err = unsafe { take_error() }.expect("last_error should be set");
+    assert!(
+        err.contains("no saved ms tokens"),
+        "unexpected error: {err}"
+    );
+}
+
+#[test]
+fn ffi_ms_auth_refresh_at_custom_dir_reports_no_tokens() {
+    let home = TempDir::new("ffi_ms_refresh_at_custom");
+    let _guard = HomeGuard::new(home.path());
+
+    let custom = home.join("empty_auth");
+    let c = CString::new(custom.to_string_lossy().to_string()).unwrap();
+
+    unsafe { clear_error() };
+    let ptr = unsafe { rmlib_ms_auth_refresh_at(c.as_ptr()) };
+    assert!(ptr.is_null());
+    let err = unsafe { take_error() }.expect("last_error should be set");
+    assert!(
+        err.contains("no saved ms tokens"),
+        "unexpected error: {err}"
+    );
 }
