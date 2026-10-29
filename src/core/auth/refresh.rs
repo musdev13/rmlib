@@ -1,10 +1,12 @@
+use std::path::Path;
+
 use super::dto::{MsTokens, TokenResponse};
 use super::error::AuthError;
-use super::store::save_tokens;
+use super::store::save_tokens_at;
 
 const TOKEN_URL: &str = "https://login.live.com/oauth20_token.srf";
 
-pub async fn refresh(refresh_token: &str) -> Result<MsTokens, AuthError> {
+pub async fn refresh_at(dir: Option<&Path>, refresh_token: &str) -> Result<MsTokens, AuthError> {
     let client = reqwest::Client::new();
 
     let response = client
@@ -34,6 +36,10 @@ pub async fn refresh(refresh_token: &str) -> Result<MsTokens, AuthError> {
         refresh_token: tokens.refresh_token,
         expires_in: tokens.expires_in,
     };
-    save_tokens(&tokens)?;
+    save_tokens_at(dir, &tokens)?;
     Ok(tokens)
+}
+
+pub async fn refresh(refresh_token: &str) -> Result<MsTokens, AuthError> {
+    refresh_at(None, refresh_token).await
 }

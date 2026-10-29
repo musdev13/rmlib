@@ -6,6 +6,13 @@ This is the counterpart of [`extra::ely::auth`](../extra/ely.md) for official Mo
 
 Credentials are stored in `auth_path/ms.json` (see [`core::config`](config.md)). `auth_path` defaults to `~/rml/auth`.
 
+Every function that reads or writes `ms.json` has an `_at` variant taking `Option<&Path>`:
+
+- `Some(dir)` — use `dir` as the auth directory instead of the configured `auth_path`.
+- `None` — resolve `auth_path` from `paths.json` (the default behaviour).
+
+The non-`_at` functions are thin wrappers over `_at(None)`.
+
 ## Enable
 
 `core::auth` is part of the `core` feature and requires no extra flags:
@@ -49,27 +56,29 @@ pub struct McProfile {
 | `xuid` | Xbox user id | Xbox user id | Xbox user id |
 | `has_license` | `true` | `false` | `false` |
 
-## `login`
+## `login` / `login_at`
 
 ```rust
 pub async fn login() -> Result<MsTokens, AuthError>
+pub async fn login_at(dir: Option<&Path>) -> Result<MsTokens, AuthError>
 ```
 
 Runs the Microsoft **device code** flow:
 
 1. Requests a device code and prints the verification URL and user code to stdout (via `musutils::types::Status::Note`).
 2. Polls the token endpoint until the user confirms in the browser (honours `authorization_pending` / `slow_down`, fails on `expired_token`).
-3. Saves the resulting tokens to `auth_path/ms.json` and returns them.
+3. Saves the resulting tokens to `auth_path/ms.json` (or `dir/ms.json` for `login_at`) and returns them.
 
 This is interactive: the user has to open the printed URL and enter the code.
 
-## `refresh`
+## `refresh` / `refresh_at`
 
 ```rust
 pub async fn refresh(refresh_token: &str) -> Result<MsTokens, AuthError>
+pub async fn refresh_at(dir: Option<&Path>, refresh_token: &str) -> Result<MsTokens, AuthError>
 ```
 
-Exchanges a `refresh_token` for a new `MsTokens` without user interaction, and saves the refreshed tokens to `ms.json` (Microsoft rotates the refresh token, so persisting it matters).
+Exchanges a `refresh_token` for a new `MsTokens` without user interaction, and saves the refreshed tokens to `ms.json` in `dir` or the configured `auth_path` (Microsoft rotates the refresh token, so persisting it matters).
 
 Returns `Err(AuthError::Status { .. })` if the token is expired or revoked.
 
@@ -83,17 +92,18 @@ Runs the Xbox Live → XSTS → Minecraft Services chain with a Microsoft access
 
 If Minecraft Services rejects the login or returns `404` for the profile, the returned `McProfile` has `has_license = false` and placeholder fields as described above — this is not an error.
 
-## `get_data`
+## `get_data` / `get_data_at`
 
 ```rust
 pub async fn get_data() -> Result<McProfile, AuthError>
+pub async fn get_data_at(dir: Option<&Path>) -> Result<McProfile, AuthError>
 ```
 
 The high-level entry point. Workflow:
 
-1. `load_tokens()` — read `ms.json` if it exists.
-2. If tokens are present, `refresh()` them. If the refresh fails (expired / revoked), fall back to `login()`.
-3. If no tokens are present, `login()`.
+1. `load_tokens_at(dir)` — read `ms.json` if it exists.
+2. If tokens are present, `refresh_at(dir, ..)` them. If the refresh fails (expired / revoked), fall back to `login_at(dir)`.
+3. If no tokens are present, `login_at(dir)`.
 4. `get_profile()` with the resulting Microsoft access token, and return the `McProfile`.
 
 ```rust
@@ -110,15 +120,24 @@ println!("{} ({})", profile.username, profile.uuid);
 
 ```rust
 pub fn save_tokens(tokens: &MsTokens) -> Result<(), AuthError>
+pub fn save_tokens_at(dir: Option<&Path>, tokens: &MsTokens) -> Result<(), AuthError>
+
 pub fn load_tokens() -> Result<Option<MsTokens>, AuthError>
+pub fn load_tokens_at(dir: Option<&Path>) -> Result<Option<MsTokens>, AuthError>
+
 pub fn clear_tokens() -> Result<(), AuthError>
+pub fn clear_tokens_at(dir: Option<&Path>) -> Result<(), AuthError>
+
 pub fn tokens_file() -> Result<PathBuf, AuthError>
+pub fn tokens_file_at(dir: Option<&Path>) -> Result<PathBuf, AuthError>
 ```
 
-- `save_tokens` writes `auth_path/ms.json` atomically (creating `auth_path` if needed).
-- `load_tokens` returns `Ok(None)` if the file is absent **or** cannot be parsed — a corrupt file is treated as "not logged in" rather than an error.
-- `clear_tokens` removes `ms.json` if it exists.
-- `tokens_file` returns the resolved path, useful for diagnostics.
+- `save_tokens*` write `ms.json` atomically (creating the directory if needed).
+- `load_tokens*` return `Ok(None)` if the file is absent **or** cannot be parsed — a corrupt file is treated as "not logged in" rather than an error.
+- `clear_tokens*` remove `ms.json` if it exists.
+- `tokens_file*` return the resolved path, useful for diagnostics.
+
+The `_at` variants take an explicit directory; the plain variants resolve `auth_path` from the config.
 
 ```rust
 use rmlib::core::auth::{clear_tokens, tokens_file};

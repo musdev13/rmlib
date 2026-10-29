@@ -5,7 +5,10 @@ mod common;
 use std::fs;
 
 use common::{HomeGuard, TempDir};
-use rmlib::core::auth::{McProfile, MsTokens, clear_tokens, load_tokens, save_tokens, tokens_file};
+use rmlib::core::auth::{
+    McProfile, MsTokens, clear_tokens, clear_tokens_at, load_tokens, load_tokens_at, save_tokens,
+    save_tokens_at, tokens_file, tokens_file_at,
+};
 
 fn sample_tokens() -> MsTokens {
     MsTokens {
@@ -132,4 +135,86 @@ fn no_license_profile_shape() {
     assert_eq!(value["username"], "no_license");
     assert_eq!(value["has_license"], false);
     assert_eq!(value["xuid"], "real_xuid");
+}
+
+#[test]
+fn tokens_file_at_uses_custom_dir() {
+    let home = TempDir::new("auth_at_tokens_file");
+    let _guard = HomeGuard::new(home.path());
+
+    let custom = home.join("custom_auth");
+    let path = tokens_file_at(Some(&custom)).unwrap();
+    assert_eq!(path, custom.join("ms.json"));
+}
+
+#[test]
+fn tokens_file_at_none_uses_config() {
+    let home = TempDir::new("auth_at_tokens_file_none");
+    let _guard = HomeGuard::new(home.path());
+
+    assert_eq!(
+        tokens_file_at(None).unwrap(),
+        home.path().join("rml").join("auth").join("ms.json")
+    );
+}
+
+#[test]
+fn save_load_at_custom_dir_roundtrip() {
+    let home = TempDir::new("auth_at_roundtrip");
+    let _guard = HomeGuard::new(home.path());
+
+    let custom = home.join("custom_auth");
+    let tokens = sample_tokens();
+    save_tokens_at(Some(&custom), &tokens).unwrap();
+
+    assert!(custom.join("ms.json").exists());
+    assert!(
+        !home
+            .path()
+            .join("rml")
+            .join("auth")
+            .join("ms.json")
+            .exists()
+    );
+
+    let loaded = load_tokens_at(Some(&custom)).unwrap().expect("tokens");
+    assert_eq!(loaded, tokens);
+}
+
+#[test]
+fn save_at_custom_dir_does_not_touch_config_dir() {
+    let home = TempDir::new("auth_at_isolation");
+    let _guard = HomeGuard::new(home.path());
+
+    let custom = home.join("other_auth");
+    save_tokens_at(Some(&custom), &sample_tokens()).unwrap();
+
+    assert!(
+        load_tokens().unwrap().is_none(),
+        "default dir must stay empty"
+    );
+}
+
+#[test]
+fn clear_at_custom_dir_removes_only_custom() {
+    let home = TempDir::new("auth_at_clear");
+    let _guard = HomeGuard::new(home.path());
+
+    let custom = home.join("custom_auth");
+    save_tokens(&sample_tokens()).unwrap();
+    save_tokens_at(Some(&custom), &sample_tokens()).unwrap();
+
+    clear_tokens_at(Some(&custom)).unwrap();
+
+    assert!(!custom.join("ms.json").exists());
+    assert!(ms_json(&home).exists(), "default ms.json must remain");
+}
+
+#[test]
+fn load_at_custom_missing_returns_none() {
+    let home = TempDir::new("auth_at_missing");
+    let _guard = HomeGuard::new(home.path());
+
+    let custom = home.join("nope");
+    assert!(load_tokens_at(Some(&custom)).unwrap().is_none());
 }

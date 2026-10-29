@@ -10,15 +10,27 @@ All exports on this page require the `core` feature **and** the `ffi` feature.
 #include "rmlib.h"
 ```
 
-## `rmlib_ms_auth_login`
+Each operation has two exports:
+
+- a plain one (no `dir` parameter) that uses `auth_path` from `paths.json`;
+- an `_at` one taking `const char *dir` — a custom auth directory, or `NULL` to use the configured `auth_path` (equivalent to the plain variant).
+
+## `rmlib_ms_auth_login` / `rmlib_ms_auth_login_at`
 
 ```c
 char *rmlib_ms_auth_login(void);
+char *rmlib_ms_auth_login_at(const char *dir);
 ```
 
-Runs the Microsoft device-code login flow (`core::auth::login`): prints the verification URL and user code to stdout, waits for the user to confirm, then saves the tokens to `auth_path/ms.json`.
+Runs the Microsoft device-code login flow (`core::auth::login` / `login_at`): prints the verification URL and user code to stdout, waits for the user to confirm, then saves the tokens to `ms.json` (in `dir`, or in `auth_path` when `dir` is `NULL`).
 
 **This call blocks** until the user completes the login in a browser or the device code expires.
+
+### Parameters
+
+| Parameter | Meaning |
+|---|---|
+| `dir` | Directory where `ms.json` is saved, or `NULL` to use `auth_path`. Ignored by the plain variant. |
 
 ### Returns
 
@@ -55,13 +67,26 @@ else:
     print("logged in, refresh_token:", tokens["refresh_token"][:8], "…")
 ```
 
-## `rmlib_ms_auth_refresh`
+Custom directory:
+
+```python
+lib.rmlib_ms_auth_login_at.argtypes = [ctypes.c_char_p]
+lib.rmlib_ms_auth_login_at.restype = ctypes.c_void_p
+
+ptr = lib.rmlib_ms_auth_login_at(b"/home/me/other-auth")
+# … same handling as above
+```
+
+## `rmlib_ms_auth_refresh` / `rmlib_ms_auth_refresh_at`
 
 ```c
 char *rmlib_ms_auth_refresh(void);
+char *rmlib_ms_auth_refresh_at(const char *dir);
 ```
 
-Refreshes the tokens stored in `auth_path/ms.json` (`core::auth::refresh`), saves the new tokens, and returns them. No user interaction.
+Refreshes the tokens stored in `ms.json` (`core::auth::refresh` / `refresh_at`), saves the new tokens, and returns them. No user interaction.
+
+The `_at` variant reads the existing `refresh_token` from `dir/ms.json`; the plain variant uses `auth_path`.
 
 ### Returns
 
@@ -71,7 +96,7 @@ Same JSON shape as `rmlib_ms_auth_login`. Free with `rmlib_string_free`.
 
 Returns `NULL` and sets `rmlib_last_error` if:
 
-- there is no saved `ms.json` (`"no saved ms tokens; run rmlib_ms_auth_login first"`),
+- there is no saved `ms.json` in the target directory (`"no saved ms tokens; run rmlib_ms_auth_login first"`),
 - the refresh token is expired or revoked,
 - the network or filesystem fails.
 
@@ -89,13 +114,14 @@ if (!tokens) {
 }
 ```
 
-## `rmlib_ms_auth_get_data`
+## `rmlib_ms_auth_get_data` / `rmlib_ms_auth_get_data_at`
 
 ```c
 char *rmlib_ms_auth_get_data(void);
+char *rmlib_ms_auth_get_data_at(const char *dir);
 ```
 
-High-level entry point (`core::auth::get_data`): loads `ms.json`, refreshes the tokens, falls back to the device-code login if refreshing fails or no tokens exist, then runs the Xbox Live → XSTS → Minecraft profile chain.
+High-level entry point (`core::auth::get_data` / `get_data_at`): loads `ms.json` from the target directory, refreshes the tokens, falls back to the device-code login if refreshing fails or no tokens exist, then runs the Xbox Live → XSTS → Minecraft profile chain.
 
 **This call can block** on the device-code login if no valid tokens are available.
 
@@ -140,13 +166,14 @@ else:
     print(profile["username"], profile["uuid"])
 ```
 
-## `rmlib_ms_auth_clear`
+## `rmlib_ms_auth_clear` / `rmlib_ms_auth_clear_at`
 
 ```c
 int32_t rmlib_ms_auth_clear(void);
+int32_t rmlib_ms_auth_clear_at(const char *dir);
 ```
 
-Deletes `auth_path/ms.json` (`core::auth::clear_tokens`) — logs the account out on this machine.
+Deletes `ms.json` from the target directory (`core::auth::clear_tokens` / `clear_tokens_at`) — logs the account out on this machine.
 
 ### Returns
 
@@ -168,13 +195,15 @@ if (rmlib_ms_auth_clear() != 0) {
 ## Typical flow
 
 ```text
-rmlib_ms_auth_get_data()   → everything: refresh or login, then profile
-rmlib_ms_auth_login()      → force an interactive login
-rmlib_ms_auth_refresh()    → refresh an existing session
-rmlib_ms_auth_clear()      → log out
+rmlib_ms_auth_get_data()      → everything: refresh or login, then profile
+rmlib_ms_auth_login()         → force an interactive login
+rmlib_ms_auth_refresh()       → refresh an existing session
+rmlib_ms_auth_clear()         → log out
 ```
 
 For most callers `rmlib_ms_auth_get_data` is the only export needed.
+
+Pass a `dir` to any `_at` variant to keep a separate account/session in a custom directory; pass `NULL` to use the `auth_path` from `paths.json`.
 
 ## See also
 

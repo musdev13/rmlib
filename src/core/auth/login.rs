@@ -1,16 +1,17 @@
+use std::path::Path;
 use std::time::Duration;
 
 use musutils::types::Status;
 
 use super::dto::{DeviceCodeResponse, MsTokens, TokenErrorResponse, TokenResponse};
 use super::error::AuthError;
-use super::store::save_tokens;
+use super::store::save_tokens_at;
 
 const DEVICE_CODE_URL: &str = "https://login.live.com/oauth20_connect.srf";
 const TOKEN_URL: &str = "https://login.live.com/oauth20_token.srf";
 const SCOPE: &str = "XboxLive.signin offline_access";
 
-pub async fn login() -> Result<MsTokens, AuthError> {
+pub async fn login_at(dir: Option<&Path>) -> Result<MsTokens, AuthError> {
     let client = reqwest::Client::new();
 
     let device: DeviceCodeResponse = client
@@ -58,7 +59,7 @@ pub async fn login() -> Result<MsTokens, AuthError> {
                 refresh_token: tokens.refresh_token,
                 expires_in: tokens.expires_in,
             };
-            save_tokens(&tokens)?;
+            save_tokens_at(dir, &tokens)?;
             return Ok(tokens);
         }
 
@@ -83,4 +84,8 @@ pub async fn login() -> Result<MsTokens, AuthError> {
             }
         }
     }
+}
+
+pub async fn login() -> Result<MsTokens, AuthError> {
+    login_at(None).await
 }
