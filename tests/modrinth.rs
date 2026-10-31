@@ -353,3 +353,46 @@ fn error_display() {
     };
     assert!(e.to_string().contains("5s"));
 }
+
+#[test]
+fn skip_reason_as_str() {
+    assert_eq!(SkipReason::ProjectUnresolved.as_str(), "project_unresolved");
+    assert_eq!(
+        SkipReason::NoCompatibleVersion.as_str(),
+        "no_compatible_version"
+    );
+    assert_eq!(
+        SkipReason::UnsupportedContentType.as_str(),
+        "unsupported_content_type"
+    );
+}
+
+#[test]
+fn install_result_backwards_compatible_without_skipped() {
+    let raw = r#"{"source":"project","project_type":"mod","installed":[]}"#;
+    let r: InstallResult = serde_json::from_str(raw).unwrap();
+    assert!(r.skipped.is_empty());
+}
+
+#[test]
+fn install_result_roundtrip_with_skipped() {
+    let r = InstallResult {
+        source: InstallSource::Project,
+        project_type: Some(ProjectType::Mod),
+        installed: vec![],
+        skipped: vec![
+            SkippedDependency {
+                project_id: "p1".to_string(),
+                reason: SkipReason::NoCompatibleVersion,
+            },
+            SkippedDependency {
+                project_id: "p2".to_string(),
+                reason: SkipReason::ProjectUnresolved,
+            },
+        ],
+    };
+    let json = serde_json::to_value(&r).unwrap();
+    assert_eq!(json["skipped"][0]["reason"], "no_compatible_version");
+    let back: InstallResult = serde_json::from_value(json).unwrap();
+    assert_eq!(back, r);
+}

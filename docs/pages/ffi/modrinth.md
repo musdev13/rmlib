@@ -141,7 +141,7 @@ char *rmlib_modrinth_install_datapack(
 
 ### Returns
 
-JSON `InstallResult`: `{ "source": "project", "project_type": "mod", "installed": [ … ] }`, where each installed file has `path`, `filename`, `bytes`, `sha1`, `sha512`, `project_id`, `version_id`.
+JSON `InstallResult`: `{ "source": "project", "project_type": "mod", "installed": [ … ], "skipped": [ … ] }`, where each installed file has `path`, `filename`, `bytes`, `sha1`, `sha512`, `project_id`, `version_id`, and each skipped dependency has `project_id` and `reason` (`project_unresolved`, `no_compatible_version`, `unsupported_content_type`). `skipped` is present only when `install_required_dependencies` is set; it defaults to an empty array when absent.
 
 ### Errors
 

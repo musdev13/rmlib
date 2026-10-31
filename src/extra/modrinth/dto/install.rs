@@ -44,8 +44,34 @@ pub enum InstallSource {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct SkippedDependency {
+    pub project_id: String,
+    pub reason: SkipReason,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum SkipReason {
+    ProjectUnresolved,
+    NoCompatibleVersion,
+    UnsupportedContentType,
+}
+
+impl SkipReason {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            SkipReason::ProjectUnresolved => "project_unresolved",
+            SkipReason::NoCompatibleVersion => "no_compatible_version",
+            SkipReason::UnsupportedContentType => "unsupported_content_type",
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct InstallResult {
     pub source: InstallSource,
     pub project_type: Option<ProjectType>,
     pub installed: Vec<InstalledFile>,
+    #[serde(default)]
+    pub skipped: Vec<SkippedDependency>,
 }

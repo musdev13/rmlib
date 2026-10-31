@@ -90,10 +90,13 @@ pub async fn get_project(id_or_slug: &str) -> Result<Project, ModrinthError>
 pub async fn get_projects(ids: &[String]) -> Result<Vec<Project>, ModrinthError>
 pub async fn get_project_by_hash(hash: &str) -> Result<Project, ModrinthError>
 pub async fn get_project_dependencies(project_id: &str) -> Result<Vec<Dependency>, ModrinthError>
+pub async fn get_project_dependencies_filtered(project_id: &str, filters: &VersionFilters) -> Result<Vec<Dependency>, ModrinthError>
 pub async fn get_project_members(project_id: &str) -> Result<Vec<ProjectMember>, ModrinthError>
 ```
 
 `get_project_by_hash` resolves the hash to a version, then to the project.
+
+`get_project_dependencies` aggregates dependencies over **all** versions of the project; `get_project_dependencies_filtered` restricts that to versions matching `VersionFilters` (`game_versions` / `loaders` / `version_type`), so you get dependencies relevant to a specific target configuration.
 
 `Project` keeps the API fields: slug, title, description, body, categories, client/server side, downloads, followers, links (`source_url`, `issues_url`, `wiki_url`, `discord_url`, `donation_urls`), license, versions, game versions, loaders, gallery, team, status, moderator message.
 
@@ -229,6 +232,9 @@ let result = install::install_project("sodium", &params).await?;
 for f in result.installed {
     println!("{} ({} bytes)", f.path.display(), f.bytes);
 }
+for s in result.skipped {
+    println!("skipped dependency {} ({})", s.project_id, s.reason.as_str());
+}
 ```
 
 ### Data packs
@@ -244,6 +250,40 @@ The world directory must already exist; the module does not create a fake save. 
 ### Dependencies
 
 `install_required_dependencies` walks the version dependencies, installs required ones that have a compatible version, and avoids cycles via a visited-project set.
+
+Required dependencies that could **not** be installed are reported in `InstallResult.skipped` instead of being dropped silently:
+
+```rust
+pub struct SkippedDependency {
+    pub project_id: String,
+    pub reason: SkipReason,
+}
+
+pub enum SkipReason {
+    ProjectUnresolved,
+    NoCompatibleVersion,
+    UnsupportedContentType,
+}
+```
+
+- `ProjectUnresolved` — the dependency project or its versions could not be fetched.
+- `NoCompatibleVersion` — no version matches `minecraft_version` / `loader` / `version_type`.
+- `UnsupportedContentType` — the content type cannot be installed automatically (e.g. modpack/world) or differs from the parent.
+
+Only **required** dependencies are installed; optional, incompatible and embedded ones are ignored.
+
+### `InstallResult`
+
+```rust
+pub struct InstallResult {
+    pub source: InstallSource,
+    pub project_type: Option<ProjectType>,
+    pub installed: Vec<InstalledFile>,
+    pub skipped: Vec<SkippedDependency>,
+}
+```
+
+`skipped` is empty unless `install_required_dependencies` was set. It is omitted gracefully when absent in older JSON (`#[serde(default)]`).
 
 ## Error type
 

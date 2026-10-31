@@ -3,8 +3,8 @@ use std::path::{Path, PathBuf};
 
 use super::client::client;
 use super::dto::{
-    InstallParams, InstallResult, InstallSource, InstalledFile, ProjectType, Version, VersionFile,
-    VersionFilters,
+    InstallParams, InstallResult, InstallSource, InstalledFile, ProjectType, SkipReason,
+    SkippedDependency, Version, VersionFile, VersionFilters,
 };
 use super::error::ModrinthError;
 use super::hash;
@@ -41,6 +41,7 @@ pub async fn install_project(
 
     let installed = install_version_files(&selected, &target_dir, params).await?;
     let mut all_installed = installed;
+    let mut skipped: Vec<SkippedDependency> = Vec::new();
 
     if params.install_required_dependencies {
         let mut visited: HashSet<String> = HashSet::new();
@@ -51,6 +52,7 @@ pub async fn install_project(
             params,
             &mut visited,
             &mut all_installed,
+            &mut skipped,
         )
         .await?;
     }
@@ -59,6 +61,7 @@ pub async fn install_project(
         source: InstallSource::Project,
         project_type: Some(project_type),
         installed: all_installed,
+        skipped,
     })
 }
 
@@ -75,6 +78,7 @@ pub async fn install_version(
         source: InstallSource::Version,
         project_type: Some(project_type),
         installed,
+        skipped: Vec::new(),
     })
 }
 
@@ -91,6 +95,7 @@ pub async fn install_from_hash(
         source: InstallSource::Hash,
         project_type: Some(project_type),
         installed,
+        skipped: Vec::new(),
     })
 }
 
@@ -138,6 +143,7 @@ pub async fn install_datapack(
         source: InstallSource::Datapack,
         project_type: Some(project_type),
         installed,
+        skipped: Vec::new(),
     })
 }
 
@@ -326,6 +332,7 @@ async fn collect_dependencies(
     params: &InstallParams,
     visited: &mut HashSet<String>,
     installed: &mut Vec<InstalledFile>,
+    skipped: &mut Vec<SkippedDependency>,
 ) -> Result<(), ModrinthError> {
     for dep in &ver.dependencies {
         if !dep.is_required() {
@@ -339,10 +346,20 @@ async fn collect_dependencies(
         }
         let dep_project = match project::get_project(pid).await {
             Ok(p) => p,
-            Err(_) => continue,
+            Err(_) => {
+                skipped.push(SkippedDependency {
+                    project_id: pid.clone(),
+                    reason: SkipReason::ProjectUnresolved,
+                });
+                continue;
+            }
         };
         let dep_type = parse_project_type(&dep_project.project_type);
         if dep_type != parent_type && !is_compatible_install(dep_type) {
+            skipped.push(SkippedDependency {
+                project_id: pid.clone(),
+                reason: SkipReason::UnsupportedContentType,
+            });
             continue;
         }
         let filters = VersionFilters {
@@ -352,7 +369,13 @@ async fn collect_dependencies(
         };
         let versions = match version::get_project_versions(pid, &filters).await {
             Ok(v) => v,
-            Err(_) => continue,
+            Err(_) => {
+                skipped.push(SkippedDependency {
+                    project_id: pid.clone(),
+                    reason: SkipReason::ProjectUnresolved,
+                });
+                continue;
+            }
         };
         let Some(selected) = version::select_compatible_version(
             &versions,
@@ -360,17 +383,27 @@ async fn collect_dependencies(
             params.loader.as_deref(),
             params.version_type,
         ) else {
+            skipped.push(SkippedDependency {
+                project_id: pid.clone(),
+                reason: SkipReason::NoCompatibleVersion,
+            });
             continue;
         };
         let selected = selected.clone();
         let target_dir = match resolve_install_dir(dep_type, params) {
             Ok(d) => d,
-            Err(_) => continue,
+            Err(_) => {
+                skipped.push(SkippedDependency {
+                    project_id: pid.clone(),
+                    reason: SkipReason::UnsupportedContentType,
+                });
+                continue;
+            }
         };
         let files = install_version_files(&selected, &target_dir, params).await?;
         installed.extend(files);
         Box::pin(collect_dependencies(
-            &selected, dep_type, params, visited, installed,
+            &selected, dep_type, params, visited, installed, skipped,
         ))
         .await?;
     }

@@ -1,5 +1,5 @@
 use super::client::get_json;
-use super::dto::{Dependency, Project, ProjectMember, Version};
+use super::dto::{Dependency, Project, ProjectMember, VersionFilters};
 use super::error::ModrinthError;
 
 pub async fn get_project(id_or_slug: &str) -> Result<Project, ModrinthError> {
@@ -25,7 +25,14 @@ pub async fn get_project_by_hash(hash: &str) -> Result<Project, ModrinthError> {
 }
 
 pub async fn get_project_dependencies(project_id: &str) -> Result<Vec<Dependency>, ModrinthError> {
-    let versions: Vec<Version> = get_json(&format!("/project/{project_id}/version"), &[]).await?;
+    get_project_dependencies_filtered(project_id, &VersionFilters::default()).await
+}
+
+pub async fn get_project_dependencies_filtered(
+    project_id: &str,
+    filters: &VersionFilters,
+) -> Result<Vec<Dependency>, ModrinthError> {
+    let versions = super::version::get_project_versions(project_id, filters).await?;
     let mut out: Vec<Dependency> = Vec::new();
     for v in versions {
         for d in v.dependencies {
