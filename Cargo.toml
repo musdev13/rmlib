@@ -1,6 +1,6 @@
 [package]
 name = "rmlib"
-version = "0.12.0"
+version = "0.13.0"
 edition = "2024"
 authors = ["Mus <cuteemus@gmail.com>"]
 description = "Rust Minecraft Launcher library"
@@ -19,7 +19,8 @@ musutils = { path = "../musutils", features = ["fs-v2", "http-v2", "os-v2", "typ
 clap = { version = "4.6", features = ["derive"] }
 zip = "9.1"
 sha1 = "0.11.0"
-reqwest = { version = "0.13.5", features = ["blocking", "json", "form"] }
+sha2 = "0.10"
+reqwest = { version = "0.13.5", features = ["blocking", "json", "form", "query"] }
 roxmltree = "=0.18.1"
 tokio = { version = "1", features = ["time", "rt-multi-thread"] }
 
@@ -30,10 +31,11 @@ zip = "9.1"
 musutils = { path = "../musutils", features = ["fs-v2", "http-v2", "os-v2", "types-v2", "color-v2"] }
 
 [features]
-default = ["core", "ely", "fabric", "neoforge", "profiles"]
+default = ["core", "ely", "fabric", "neoforge", "profiles", "modrinth"]
 core = []
 ely = ["core"]
 fabric = ["core"]
 neoforge = ["core"]
 profiles = ["core"]
+modrinth = ["core"]
 ffi = []

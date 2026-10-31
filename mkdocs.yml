@@ -50,6 +50,7 @@ nav:
       - Fabric: pages/extra/fabric.md
       - NeoForge: pages/extra/neoforge.md
       - Profiles: pages/extra/profiles.md
+      - Modrinth: pages/extra/modrinth.md
   - FFI:
       - Overview: pages/ffi/index.md
       - Library Info: pages/ffi/lib.md
@@ -61,3 +62,4 @@ nav:
       - Run: pages/ffi/run.md
       - Ely.by: pages/ffi/ely.md
       - Profiles: pages/ffi/profiles.md
+      - Modrinth: pages/ffi/modrinth.md
