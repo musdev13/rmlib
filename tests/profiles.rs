@@ -6,8 +6,9 @@ use std::fs;
 
 use common::{HomeGuard, TempDir};
 use rmlib::extra::profiles::{
-    Profile, ProfileError, ProfileKind, delete_profile_at, list_profiles_at, load_profile_at,
-    profile_path_at, profiles_dir_at, save_profile_at,
+    InstanceConfig, Profile, ProfileError, ProfileKind, delete_profile_at, instance_default_path,
+    list_profiles_at, load_instance, load_profile_at, profile_path_at, profiles_dir_at,
+    save_instance, save_profile_at,
 };
 
 fn sample(kind: ProfileKind) -> Profile {
@@ -242,4 +243,114 @@ fn profile_serde_omits_optional_none() {
     assert_eq!(value["access_token"], "t");
     assert!(value.get("uuid").is_none());
     assert!(value.get("client_token").is_none());
+}
+
+#[test]
+fn instance_default_path_joins_rml_json() {
+    let p = instance_default_path(std::path::Path::new("/game"));
+    assert_eq!(p, std::path::PathBuf::from("/game/rml.json"));
+}
+
+#[test]
+fn instance_save_load_roundtrip() {
+    let home = TempDir::new("inst_roundtrip");
+    let _guard = HomeGuard::new(home.path());
+
+    let cfg = InstanceConfig {
+        version_id: Some("26.3".to_string()),
+        ram: Some("6G".to_string()),
+        username: Some("Musek".to_string()),
+        ely: Some(true),
+        betafix: None,
+        profile: Some(true),
+        jvm_args: Some("-Xmx6G".to_string()),
+        game_args: None,
+        versions: Some(std::path::PathBuf::from("/v")),
+        assets: None,
+        libs: None,
+        game_path: Some(std::path::PathBuf::from("./game")),
+        spawn_path: None,
+        java: None,
+        fabric: Some("0.20.1".to_string()),
+        neoforge: None,
+        auth_path: None,
+    };
+    let path = home.join("rml.json");
+    save_instance(&path, &cfg).unwrap();
+    let loaded = load_instance(&path).unwrap();
+    assert_eq!(loaded, cfg);
+}
+
+#[test]
+fn instance_json_skips_none() {
+    let cfg = InstanceConfig {
+        version_id: Some("26.3".to_string()),
+        ram: None,
+        username: None,
+        ely: Some(false),
+        betafix: None,
+        profile: None,
+        jvm_args: None,
+        game_args: None,
+        versions: None,
+        assets: None,
+        libs: None,
+        game_path: None,
+        spawn_path: None,
+        java: None,
+        fabric: None,
+        neoforge: None,
+        auth_path: None,
+    };
+    let value = serde_json::to_value(&cfg).unwrap();
+    assert_eq!(value["version_id"], "26.3");
+    assert_eq!(value["ely"], false);
+    assert!(value.get("ram").is_none());
+    assert!(value.get("username").is_none());
+}
+
+#[test]
+fn instance_sparse_json_loads() {
+    let raw = r#"{"version_id":"1.21.1","fabric":"0.16.0"}"#;
+    let cfg: InstanceConfig = serde_json::from_str(raw).unwrap();
+    assert_eq!(cfg.version_id.as_deref(), Some("1.21.1"));
+    assert_eq!(cfg.fabric.as_deref(), Some("0.16.0"));
+    assert!(cfg.ram.is_none());
+}
+
+#[test]
+fn instance_load_missing_errors() {
+    let home = TempDir::new("inst_missing");
+    let _guard = HomeGuard::new(home.path());
+
+    let path = home.join("nope.json");
+    assert!(matches!(load_instance(&path), Err(ProfileError::Io(_))));
+}
+
+#[test]
+fn instance_corrupt_json_errors() {
+    let home = TempDir::new("inst_corrupt");
+    let _guard = HomeGuard::new(home.path());
+
+    let path = home.write("bad.json", b"not json");
+    assert!(matches!(load_instance(&path), Err(ProfileError::Json(_))));
+}
+
+#[test]
+fn instance_merge_fills_only_missing() {
+    let mut base = InstanceConfig {
+        version_id: Some("cli".to_string()),
+        ram: None,
+        ..Default::default()
+    };
+    let other = InstanceConfig {
+        version_id: Some("file".to_string()),
+        ram: Some("4G".to_string()),
+        username: Some("FromFile".to_string()),
+        ..Default::default()
+    };
+    base.merge_missing_from(&other);
+    assert_eq!(base.version_id.as_deref(), Some("cli"));
+    assert_eq!(base.ram.as_deref(), Some("4G"));
+    assert_eq!(base.username.as_deref(), Some("FromFile"));
 }

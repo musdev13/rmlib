@@ -48,6 +48,7 @@ Saved account profiles for Ely.by and Microsoft accounts. Implies `core`.
 
 - `rmlib::extra::profiles::Profile` / `ProfileKind` — a stored account: username, uuid, access token, and optional client token / xuid / license flag.
 - `rmlib::extra::profiles::{save_profile, load_profile, delete_profile, list_profiles}` — store/read profiles under `auth_path/profiles/{ely,ms}/<username>.json`.
+- `rmlib::extra::profiles::InstanceConfig` — a sparse launch-settings file (`rml.json`), saved and loaded with `save_instance` / `load_instance`, merged with `merge_missing_from`.
 - Every function has an `_at` variant taking an explicit auth directory, mirroring `core::auth`.
 
 ### `fabric`
