@@ -222,9 +222,29 @@ async fn download_file(
     }
     std::fs::create_dir_all(target_dir)?;
 
-    let final_path = target_dir.join(&file.filename);
+    let candidate = target_dir.join(&file.filename);
+    if !params.overwrite
+        && candidate.exists()
+        && let Some(expected) = &file.hashes.sha1
+        && let Ok(actual) = hash::sha1_file(&candidate)
+        && actual.eq_ignore_ascii_case(expected)
+    {
+        let bytes = std::fs::metadata(&candidate)
+            .map(|m| m.len())
+            .unwrap_or(file.size);
+        return Ok(InstalledFile {
+            path: candidate,
+            filename: file.filename.clone(),
+            bytes,
+            sha1: file.hashes.sha1.clone(),
+            sha512: file.hashes.sha512.clone(),
+            project_id: Some(ver.project_id.clone()),
+            version_id: Some(ver.id.clone()),
+        });
+    }
+
     let (final_path, actual_filename) =
-        resolve_conflict(&final_path, params.overwrite, file.hashes.sha1.as_deref())?;
+        resolve_conflict(&candidate, params.overwrite, file.hashes.sha1.as_deref())?;
 
     let response = client().get(&file.url).send().await?;
     let status = response.status();
