@@ -1,5 +1,7 @@
 pub mod ely;
 pub mod fabric;
+#[cfg(feature = "modrinth")]
+pub mod modrinth;
 pub mod neoforge;
 #[cfg(feature = "profiles")]
 pub mod profiles;

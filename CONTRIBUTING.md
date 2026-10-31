@@ -19,8 +19,9 @@ Thanks for your interest in the project!
 - `extra/fabric` (feature `fabric`) — Fabric Loader: version listing and installation.
 - `extra/neoforge` (feature `neoforge`) — NeoForge: version listing and installation.
 - `extra/profiles` (feature `profiles`) — saved account profiles for Ely.by and Microsoft accounts.
+- `extra/modrinth` (feature `modrinth`) — Modrinth API client: search, metadata, installation.
 
-`default = ["core", "ely", "fabric", "neoforge", "profiles"]` — all currently available features are on by default. Each `extra` area feature implies `core` (`ely = ["core"]`, `fabric = ["core"]`, `neoforge = ["core"]`, `profiles = ["core"]`).
+`default = ["core", "ely", "fabric", "neoforge", "profiles", "modrinth"]` — all currently available features are on by default. Each `extra` area feature implies `core` (`ely = ["core"]`, `fabric = ["core"]`, `neoforge = ["core"]`, `profiles = ["core"]`).
 
 ```
 src/
@@ -32,12 +33,13 @@ src/
 │   ├── types/
 │   ├── version/
 │   └── test.rs
-├── extra/              # feature = "ely" | "fabric" | "neoforge" | "profiles"
+├── extra/              # feature = "ely" | "fabric" | "neoforge" | "profiles" | "modrinth"
 │   ├── mod.rs
 │   ├── ely/
 │   ├── fabric/
 │   ├── neoforge/
-│   └── profiles/
+│   ├── profiles/
+│   └── modrinth/
 └── ffi/                # feature = "ffi" — C ABI exports (see "FFI" section)
     ├── mod.rs
     ├── error.rs
@@ -136,8 +138,9 @@ Makefile                # make test / lint / check / docs-check / build-ffi / di
     | `extra::fabric` | `docs/pages/extra/fabric.md` |
     | `extra::neoforge` | `docs/pages/extra/neoforge.md` |
     | `extra::profiles` | `docs/pages/extra/profiles.md` |
+    | `extra::modrinth` | `docs/pages/extra/modrinth.md` |
     | FFI overview / conventions | `docs/pages/ffi/index.md` |
-    | FFI exports by area | `docs/pages/ffi/{lib,error,auth,config,version,install,run,ely,profiles}.md` |
+    | FFI exports by area | `docs/pages/ffi/{lib,error,auth,config,version,install,run,ely,profiles,modrinth}.md` |
 
     A new `extra` area also needs: a new page under `docs/pages/extra/`, a new entry in the table in `docs/pages/extra/` (see `index`-like grouping on the relevant page), the new feature listed in `docs/pages/getting-started/features.md`, and a nav entry in `mkdocs.yml`.
 
@@ -245,8 +248,9 @@ Questions and suggestions — in Issues.
 - `extra/fabric` (фича `fabric`) — Fabric Loader: список версий и установка.
 - `extra/neoforge` (фича `neoforge`) — NeoForge: список версий и установка.
 - `extra/profiles` (фича `profiles`) — сохранённые профили аккаунтов Ely.by и Microsoft.
+- `extra/modrinth` (фича `modrinth`) — клиент Modrinth API: поиск, метаданные, установка.
 
-`default = ["core", "ely", "fabric", "neoforge", "profiles"]` — все текущие фичи включены по умолчанию. Каждая фича-область в `extra` подразумевает `core` (`ely = ["core"]`, `fabric = ["core"]`, `neoforge = ["core"]`, `profiles = ["core"]`).
+`default = ["core", "ely", "fabric", "neoforge", "profiles", "modrinth"]` — все текущие фичи включены по умолчанию. Каждая фича-область в `extra` подразумевает `core` (`ely = ["core"]`, `fabric = ["core"]`, `neoforge = ["core"]`, `profiles = ["core"]`).
 
 ```
 src/
@@ -258,12 +262,13 @@ src/
 │   ├── types/
 │   ├── version/
 │   └── test.rs
-├── extra/              # фича = "ely" | "fabric" | "neoforge" | "profiles"
+├── extra/              # фича = "ely" | "fabric" | "neoforge" | "profiles" | "modrinth"
 │   ├── mod.rs
 │   ├── ely/
 │   ├── fabric/
 │   ├── neoforge/
-│   └── profiles/
+│   ├── profiles/
+│   └── modrinth/
 └── ffi/                # фича = "ffi" — экспорты C ABI (см. раздел «FFI»)
     ├── mod.rs
     ├── error.rs
@@ -361,8 +366,9 @@ Makefile                # make test / lint / check / docs-check / build-ffi / di
     | `extra::fabric` | `docs/pages/extra/fabric.md` |
     | `extra::neoforge` | `docs/pages/extra/neoforge.md` |
     | `extra::profiles` | `docs/pages/extra/profiles.md` |
+    | `extra::modrinth` | `docs/pages/extra/modrinth.md` |
     | Обзор FFI / конвенции | `docs/pages/ffi/index.md` |
-    | FFI-экспорты по областям | `docs/pages/ffi/{lib,error,auth,config,version,install,run,ely,profiles}.md` |
+    | FFI-экспорты по областям | `docs/pages/ffi/{lib,error,auth,config,version,install,run,ely,profiles,modrinth}.md` |
 
     Новая область `extra` также требует: новую страницу в `docs/pages/extra/`, запись в списке областей на соответствующих страницах, новую фичу в `docs/pages/getting-started/features.md` и запись в `nav:` файла `mkdocs.yml`.
 
