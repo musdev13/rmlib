@@ -14,7 +14,7 @@ core
 ffi           (independent of area features)
 ```
 
-`default = ["core", "ely", "fabric", "neoforge", "profiles"]`.
+`default = ["core", "ely", "fabric", "neoforge", "profiles", "modrinth", "resman", "resman-mods", "resman-resourcepacks"]`.
 
 ## `core`
 
@@ -51,6 +51,18 @@ Saved account profiles for Ely.by and Microsoft accounts. Implies `core`.
 - `rmlib::extra::profiles::InstanceConfig` — a sparse launch-settings file (`rml.json`), saved and loaded with `save_instance` / `load_instance`, merged with `merge_missing_from`.
 - Every function has an `_at` variant taking an explicit auth directory, mirroring `core::auth`.
 
+### `modrinth`
+
+Modrinth API v2 client: search, project/version metadata, users, tags, dependencies and content installation. Implies `core`.
+
+### `resman` / `resman-mods` / `resman-resourcepacks`
+
+Local content manager for installed mods and resource packs. `resman` is only a namespace; the submodules carry the API and each has its own feature (both imply `resman`, which implies `core`).
+
+- `resman::mods` (`resman-mods`) — `scan`, `scan_dir`, `info_from_file`, `info_by_id`, `enable` / `disable` / `toggle` (`.disabled` suffix), `Priority` / `FallbackPolicy`, field selection, `json` / `table` / `plain` rendering.
+- `resman::resourcepacks` (`resman-resourcepacks`) — `scan`, `scan_dir`, `info_from_file`, `Priority` / `FallbackPolicy`, field selection, `pack_format` → Minecraft mapping.
+- Both extract icons into the OS temp directory and can resolve metadata from `local` and (with the `modrinth` feature) `modrinth` sources.
+
 ### `fabric`
 
 Fabric Loader version listing and installation. Implies `core`.
@@ -79,7 +91,7 @@ The crate always sets `crate-type = ["rlib", "cdylib"]`, so `librmlib.so` / `.dy
 ## Cross-feature interaction
 
 - The launch flags `ely: bool` and `betafix: bool` in `core::run` are **runtime flags**, not a compile-time dependency on `extra::ely`. You can build with only `core` and still pass `ely: true` — the launcher will inject `-javaagent:authlib-injector.jar=ely.by` if the JAR exists.
-- `available_modules()` reports the enabled areas (`core`, `ely`, `fabric`, `neoforge`, `profiles`) — see [Core API](../lib.md).
+- `available_modules()` reports the enabled areas (`core`, `ely`, `fabric`, `neoforge`, `profiles`, `modrinth`, `resman`, `resman-mods`, `resman-resourcepacks`) — see [Core API](../lib.md).
 - `ffi` exports for an area are gated with that area's feature. Building `--features "core ffi"` produces a `.so` without `rmlib_fabric_*` / `rmlib_neoforge_*` / `rmlib_ely_*`.
 
 ## Inter-feature conflicts
@@ -94,9 +106,9 @@ There are none: area features are additive, and `ffi` can be combined with any s
 | Launcher with mod loaders | `core`, `fabric`, `neoforge` |
 | Launcher with Ely.by auth | `core`, `ely` |
 | Launcher with saved account profiles | `core`, `profiles` |
-| Full featured launcher | `core`, `ely`, `fabric`, `neoforge`, `profiles` (default) |
+| Full featured launcher | `core`, `ely`, `fabric`, `neoforge`, `profiles`, `modrinth`, `resman`, `resman-mods`, `resman-resourcepacks` (default) |
 | Shared library for other languages (vanilla only) | `core`, `ffi` |
-| Shared library for other languages (full) | `core`, `ely`, `fabric`, `neoforge`, `profiles`, `ffi` |
+| Shared library for other languages (full) | `core`, `ely`, `fabric`, `neoforge`, `profiles`, `modrinth`, `resman`, `resman-mods`, `resman-resourcepacks`, `ffi` |
 
 ## See also
 

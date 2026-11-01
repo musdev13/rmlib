@@ -5,3 +5,5 @@ pub mod modrinth;
 pub mod neoforge;
 #[cfg(feature = "profiles")]
 pub mod profiles;
+#[cfg(feature = "resman")]
+pub mod resman;

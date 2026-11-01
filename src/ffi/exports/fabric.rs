@@ -1,0 +1,33 @@
+#![allow(clippy::missing_safety_doc)]
+
+use super::helpers::*;
+#[cfg(feature = "fabric")]
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn rmlib_fabric_install(opts_json: *const c_char) -> i32 {
+    catch_i32(|| {
+        let v = parse_json_arg(opts_json)?;
+        let version_id = get_str_field(&v, "version_id").ok_or("missing version_id")?;
+        let fabric_version = get_str_field(&v, "fabric_version").ok_or("missing fabric_version")?;
+        let versions_path_option = get_opt_pathbuf(&v, "versions_path");
+        let libs_path_option = get_opt_pathbuf(&v, "libs_path");
+        let assets_path_option = get_opt_pathbuf(&v, "assets_path");
+        block_on(crate::extra::fabric::install(
+            version_id,
+            fabric_version,
+            versions_path_option,
+            libs_path_option,
+            assets_path_option,
+        ));
+        Ok(())
+    })
+}
+
+#[cfg(feature = "fabric")]
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn rmlib_fabric_fetch_list(version_id: *const c_char) -> *mut c_char {
+    catch_cstr(|| {
+        let id = unsafe { cstr_to_string(version_id) }?;
+        let list = block_on(crate::extra::fabric::fetch_list(&id));
+        json_out(&list)
+    })
+}

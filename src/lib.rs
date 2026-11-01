@@ -18,7 +18,8 @@ pub mod core;
     feature = "fabric",
     feature = "neoforge",
     feature = "profiles",
-    feature = "modrinth"
+    feature = "modrinth",
+    feature = "resman"
 ))]
 pub mod extra;
 #[cfg(feature = "ffi")]
@@ -55,6 +56,19 @@ pub fn available_modules() -> Vec<ModuleInfo> {
 
     #[cfg(feature = "modrinth")]
     out.push(ModuleInfo { name: "modrinth" });
+
+    #[cfg(feature = "resman")]
+    out.push(ModuleInfo { name: "resman" });
+
+    #[cfg(feature = "resman-mods")]
+    out.push(ModuleInfo {
+        name: "resman-mods",
+    });
+
+    #[cfg(feature = "resman-resourcepacks")]
+    out.push(ModuleInfo {
+        name: "resman-resourcepacks",
+    });
 
     out
 }

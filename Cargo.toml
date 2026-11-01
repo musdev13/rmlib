@@ -1,6 +1,6 @@
 [package]
 name = "rmlib"
-version = "0.14.0"
+version = "0.15.0"
 edition = "2024"
 authors = ["Mus <cuteemus@gmail.com>"]
 description = "Rust Minecraft Launcher library"
@@ -15,27 +15,31 @@ crate-type = ["rlib", "cdylib"]
 [dependencies]
 serde_json = "1.0.154"
 serde = { version = "1.0", features = ["derive"] }
-musutils = { path = "../musutils", features = ["fs-v2", "http-v2", "os-v2", "types-v2", "color-v2"] }
+musutils = { path = "../musutils", features = ["fs-v2", "http-v2", "os-v2", "types-v2", "color-v2", "vec-v2"] }
 clap = { version = "4.6", features = ["derive"] }
 zip = "9.1"
 sha1 = "0.11.0"
 sha2 = "0.10"
 reqwest = { version = "0.13.5", features = ["blocking", "json", "form", "query"] }
 roxmltree = "=0.18.1"
+toml = "0.8"
 tokio = { version = "1", features = ["time", "rt-multi-thread"] }
 
 [dev-dependencies]
 tokio = { version = "1", features = ["rt", "macros"] }
 serde_json = "1.0.154"
 zip = "9.1"
-musutils = { path = "../musutils", features = ["fs-v2", "http-v2", "os-v2", "types-v2", "color-v2"] }
+musutils = { path = "../musutils", features = ["fs-v2", "http-v2", "os-v2", "types-v2", "color-v2", "vec-v2"] }
 
 [features]
-default = ["core", "ely", "fabric", "neoforge", "profiles", "modrinth"]
+default = ["core", "ely", "fabric", "neoforge", "profiles", "modrinth", "resman", "resman-mods", "resman-resourcepacks"]
 core = []
 ely = ["core"]
 fabric = ["core"]
 neoforge = ["core"]
 profiles = ["core"]
 modrinth = ["core"]
+resman = ["core"]
+resman-mods = ["resman"]
+resman-resourcepacks = ["resman"]
 ffi = []
