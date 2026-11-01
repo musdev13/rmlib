@@ -87,7 +87,9 @@ pub fn verify_libraries(
                     continue;
                 }
 
-                if let Some(classifier) = rel_path.rsplit('/').next()
+                let is_native = native_classifier.is_some() || name.contains(":natives-");
+                if is_native
+                    && let Some(classifier) = rel_path.rsplit('/').next()
                     && let Some(stem) = classifier.strip_suffix(".jar")
                     && !arch_matches_classifier(stem, &context.my_arch)
                 {
