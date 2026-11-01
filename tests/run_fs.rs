@@ -929,3 +929,69 @@ fn build_argv_missing_version_json_err() {
     .unwrap_err();
     assert!(err.contains("client json not found"));
 }
+
+#[test]
+fn verify_libraries_keeps_non_native_with_digits_in_name() {
+    let dir = TempDir::new("vl_digits");
+    let libs = dir.join("libs");
+    fs::create_dir_all(&libs).unwrap();
+
+    let cases = [
+        (
+            "guava-32.1.2-jre",
+            "com/google/guava/guava/32.1.2-jre/guava-32.1.2-jre.jar",
+            "com.google.guava:guava:32.1.2-jre",
+        ),
+        (
+            "JarJarMetadata-0.4.1",
+            "net/neoforged/JarJarMetadata/0.4.1/JarJarMetadata-0.4.1.jar",
+            "net.neoforged:JarJarMetadata:0.4.1",
+        ),
+    ];
+
+    for (_, rel, _) in &cases {
+        let path = libs.join(rel);
+        fs::create_dir_all(path.parent().unwrap()).unwrap();
+        fs::write(&path, b"jar").unwrap();
+    }
+
+    let libraries: Vec<serde_json::Value> = cases
+        .iter()
+        .map(|(_, rel, name)| {
+            json!({
+                "name": name,
+                "downloads": {"artifact": {"path": rel}}
+            })
+        })
+        .collect();
+
+    let version_json = json!({ "libraries": libraries });
+    let out = verify_libraries(&version_json, &libs, &context());
+    assert_eq!(out.len(), 2, "both non-native libs must be kept");
+}
+
+#[test]
+fn verify_libraries_still_filters_native_by_arch() {
+    let dir = TempDir::new("vl_native_arch");
+    let libs = dir.join("libs");
+    fs::create_dir_all(&libs).unwrap();
+
+    let rel = "org/lwjgl/lwjgl/3.3.3/lwjgl-3.3.3-natives-windows-arm64.jar";
+    let path = libs.join(rel);
+    fs::create_dir_all(path.parent().unwrap()).unwrap();
+    fs::write(&path, b"jar").unwrap();
+
+    let version_json = json!({
+        "libraries": [
+            {
+                "name": "org.lwjgl:lwjgl:3.3.3:natives-windows-arm64",
+                "natives": {"windows": "natives-windows-${arch}"},
+                "downloads": {"artifact": {"path": rel}}
+            }
+        ]
+    });
+
+    // context() is x86_64 ("64"), so arm64 native must be dropped.
+    let out = verify_libraries(&version_json, &libs, &context());
+    assert!(out.is_empty(), "arm64 native must be filtered on x86_64");
+}
