@@ -51,6 +51,9 @@ nav:
       - NeoForge: pages/extra/neoforge.md
       - Profiles: pages/extra/profiles.md
       - Modrinth: pages/extra/modrinth.md
+      - resman: pages/extra/resman.md
+      - resman::mods: pages/extra/resman-mods.md
+      - resman::resourcepacks: pages/extra/resman-resourcepacks.md
   - FFI:
       - Overview: pages/ffi/index.md
       - Library Info: pages/ffi/lib.md
@@ -63,3 +66,5 @@ nav:
       - Ely.by: pages/ffi/ely.md
       - Profiles: pages/ffi/profiles.md
       - Modrinth: pages/ffi/modrinth.md
+      - resman::mods: pages/ffi/resman-mods.md
+      - resman::resourcepacks: pages/ffi/resman-resourcepacks.md
